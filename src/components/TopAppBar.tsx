@@ -12,6 +12,7 @@ import {
   History,
   LineChart,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { HapticService } from "../services/HapticService";
@@ -201,6 +202,14 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                 >
                   <Settings className="w-4 h-4 text-amber-500" />
                   <span>Settings &amp; Profile</span>
+                </button>
+
+                <button
+                  onClick={() => handleNav("privacy")}
+                  className="w-full py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-left flex items-center gap-2.5 text-slate-800 dark:text-slate-200 cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <span>Privacy &amp; Data Safety</span>
                 </button>
               </div>
 

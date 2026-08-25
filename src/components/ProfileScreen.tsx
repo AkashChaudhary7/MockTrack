@@ -15,6 +15,8 @@ import {
   Sparkles,
   ShieldCheck,
   Languages,
+  Lock,
+  ExternalLink,
 } from "lucide-react";
 import { useTranslation, LanguageCode } from "../i18n/LanguageContext";
 
@@ -318,6 +320,58 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* F. Google Play Verifiable Privacy Policy & Data Safety */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <span>Privacy Policy &amp; Data Safety</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/20">
+                  Google Play Verifiable
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                100% offline student data, zero selling, and transparent permissions
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <button
+            onClick={() => onNavigateTab("privacy")}
+            className="p-4 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-800/80 text-indigo-900 dark:text-indigo-200 text-xs font-bold flex items-center justify-between transition-all cursor-pointer shadow-xs text-left"
+          >
+            <div>
+              <span className="font-black block text-sm">Read Full In-App Policy ➔</span>
+              <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-normal">
+                Data safety table, OCR rules &amp; rights
+              </span>
+            </div>
+            <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          </button>
+
+          <a
+            href="https://mocktrack.ictlabgsssaidana.workers.dev/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-xs font-bold flex items-center justify-between transition-all shadow-xs"
+          >
+            <div>
+              <span className="font-black block text-sm">Official Worker Policy Link</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal truncate block max-w-[200px]">
+                https://mocktrack.ictlabgsssaidana.workers.dev/privacy
+              </span>
+            </div>
+            <ExternalLink className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+          </a>
         </div>
       </div>
     </div>

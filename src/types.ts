@@ -126,4 +126,4 @@ export interface CandidateProfile {
   frequentlyUsedWeakAreas?: string[];
 }
 
-export type NavTab = "dashboard" | "history" | "log" | "insights" | "reports" | "profile" | "guide";
+export type NavTab = "dashboard" | "history" | "log" | "insights" | "reports" | "profile" | "guide" | "privacy";

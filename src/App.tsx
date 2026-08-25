@@ -22,6 +22,7 @@ import { InsightsScreen } from "./components/InsightsScreen";
 import { ReportsScreen } from "./components/ReportsScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
 import { AppGuideScreen } from "./components/AppGuideScreen";
+import { PrivacyScreen } from "./components/PrivacyScreen";
 import { LogMockModal } from "./components/LogMockModal";
 import { OcrExtractorModal } from "./components/OcrExtractorModal";
 import { ProfileSwitcherModal } from "./components/ProfileSwitcherModal";
@@ -61,8 +62,26 @@ export default function App() {
       : ["Geometry", "Algebra", "Current Affairs", "Time & Work", "Reading Comprehension"];
   });
 
-  const [activeTab, setActiveTab] = useState<NavTab>("dashboard");
-  const [showSplash, setShowSplash] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<NavTab>(() => {
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname;
+      const search = window.location.search;
+      if (path.includes("/privacy") || search.includes("privacy")) {
+        return "privacy";
+      }
+    }
+    return "dashboard";
+  });
+  const [showSplash, setShowSplash] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname;
+      const search = window.location.search;
+      if (path.includes("/privacy") || search.includes("privacy")) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   // Modals state
   const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
@@ -350,6 +369,10 @@ export default function App() {
               activeExam={activeExam}
               attempts={attempts}
             />
+          )}
+
+          {activeTab === "privacy" && (
+            <PrivacyScreen onNavigateTab={setActiveTab} />
           )}
         </main>
 

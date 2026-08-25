@@ -11,7 +11,9 @@ const PRECACHE_ASSETS = [
   '/maskable-icon-512.png',
   '/icon.svg',
   '/screenshot-desktop.png',
-  '/screenshot-mobile.png'
+  '/screenshot-mobile.png',
+  '/privacy',
+  '/privacy.html'
 ];
 
 // Install Event - Precache static shell

@@ -37,6 +37,12 @@ async function startServer() {
     res.sendFile(path.join(process.cwd(), "public", "sw.js"));
   });
 
+  // Google Play Console Verifiable Privacy Policy endpoint
+  app.get(["/privacy", "/privacy.html"], (_req, res) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.sendFile(path.join(process.cwd(), "public", "privacy.html"));
+  });
+
   // OCR Scorecard extraction endpoint
   app.post("/api/ocr-scorecard", async (req, res) => {
     try {

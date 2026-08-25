@@ -77,9 +77,20 @@ export const SplashOnboarding: React.FC<SplashOnboardingProps> = ({ onDismiss })
       </div>
 
       {/* Bottom Bar */}
-      <div className="flex items-center justify-center gap-2 text-xs text-slate-400 z-10 pb-2">
-        <ShieldCheck className="w-4 h-4 text-emerald-400" />
-        <span>100% Local &amp; Secure Data Persistence</span>
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-slate-400 z-10 pb-2">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>100% Local &amp; Secure Data Persistence</span>
+        </div>
+        <span className="hidden sm:inline text-slate-600">•</span>
+        <a
+          href="https://mocktrack.ictlabgsssaidana.workers.dev/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-300 hover:text-white underline underline-offset-2 transition-colors"
+        >
+          Privacy Policy
+        </a>
       </div>
     </div>
   );
