@@ -1,0 +1,115 @@
+{
+  "id": "https://mocktrack.app/",
+  "name": "MockTrack — Exam Score Tracker & Performance Center",
+  "short_name": "MockTrack",
+  "description": "Offline-first personal mock test score tracker, subject weakness analyzer, AI scorecard OCR reader, and rank command center for SSC CGL, Banking, NEET, JEE & Govt Exams.",
+  "start_url": "/?utm_source=pwa_app",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "window-controls-overlay",
+    "minimal-ui"
+  ],
+  "background_color": "#0F172A",
+  "theme_color": "#4F46E5",
+  "orientation": "any",
+  "dir": "ltr",
+  "lang": "en-US",
+  "categories": [
+    "education",
+    "productivity",
+    "utilities"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "MockTrack Desktop Dashboard & Subject Weakness Radar"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "MockTrack Mobile Performance Command Center"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log Mock Test",
+      "short_name": "Log Mock",
+      "description": "Record score, accuracy, and subject breakdown for latest mock test",
+      "url": "/?modal=log-mock",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "AI OCR Parser",
+      "short_name": "OCR Parse",
+      "description": "Extract marks directly from testbook/oliveboard scorecard links or screenshots",
+      "url": "/?modal=ocr-parser",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Analytics & Radar",
+      "short_name": "Analytics",
+      "description": "View subject weakness radar and accuracy trends",
+      "url": "/?tab=analytics",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/?action=share",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "related_applications": []
+}

@@ -1,0 +1,226 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Deep Space Grid Background */
+  .bg-grid-pattern {
+    background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .dark .bg-grid-pattern {
+    background-image: radial-gradient(#1e293b 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  /* 1. The Skeuomorphic 3D Push Button */
+  .btn-3d-push {
+    position: relative;
+    background-color: #4f46e5;
+    border-bottom-width: 4px;
+    border-color: #3730a3;
+    color: #ffffff;
+    font-weight: 800;
+    border-radius: 1rem;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+  }
+  .dark .btn-3d-push {
+    background-color: #7c3aed;
+    border-color: #4c1d95;
+  }
+  .btn-3d-push:hover {
+    filter: brightness(1.1);
+  }
+  .btn-3d-push:active {
+    border-bottom-width: 0px;
+    transform: translateY(4px);
+    filter: brightness(0.95);
+  }
+
+  /* 2. The Floating Glassmorphic Box */
+  .glass-box {
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+    border-radius: 1.5rem;
+  }
+  .dark .glass-box {
+    background-color: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(30, 41, 59, 0.8);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+    border-radius: 1.5rem;
+  }
+
+  /* 3. High-Contrast Inner Glow Borders (Subtle 3D Depth) */
+  .inner-glow-box {
+    background-image: linear-gradient(to top right, #f1f5f9, #f8fafc);
+    border: 1px solid rgba(203, 213, 225, 0.7);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 1rem;
+  }
+  .dark .inner-glow-box {
+    background-image: linear-gradient(to top right, #0f172a, #020617);
+    border: 1px solid rgba(30, 41, 59, 0.8);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    border-radius: 1rem;
+  }
+
+  /* Interactive Elastic Scale Feedback */
+  .interactive-tactile {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .interactive-tactile:hover {
+    transform: scale(1.015);
+  }
+  .interactive-tactile:active {
+    transform: scale(0.985);
+  }
+
+  /* Amber Coin Glow */
+  .shadow-amber-glow {
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.25);
+  }
+
+  /* Legacy 3D Tactile Button Primary */
+  .btn-3d-primary {
+    background-image: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.35),
+      0 2px 0 0 #3730a3,
+      0 6px 14px -3px rgba(79, 70, 229, 0.4);
+    border: 1px solid #4338ca;
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .dark .btn-3d-primary {
+    background-image: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
+      0 2px 0 0 #4c1d95,
+      0 6px 16px -3px rgba(139, 92, 246, 0.4);
+    border: 1px solid #6d28d9;
+  }
+  .btn-3d-primary:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+  }
+  .btn-3d-primary:active {
+    transform: translateY(1px);
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* 3D Tactile Button Secondary */
+  .btn-3d-secondary {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.95) 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 1),
+      0 2px 0 0 rgba(203, 213, 225, 0.8),
+      0 4px 10px -2px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(203, 213, 225, 0.9);
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .dark .btn-3d-secondary {
+    background-image: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+      0 2px 0 0 rgba(15, 23, 42, 0.9),
+      0 4px 12px -2px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(51, 65, 85, 0.9);
+  }
+  .btn-3d-secondary:hover {
+    transform: translateY(-1px);
+  }
+  .btn-3d-secondary:active {
+    transform: translateY(1px);
+  }
+
+  /* 3D Recessed Input Box */
+  .input-3d {
+    background-color: rgba(248, 250, 252, 0.8);
+    box-shadow:
+      inset 0 2px 4px 0 rgba(15, 23, 42, 0.06),
+      0 1px 0 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(203, 213, 225, 0.8);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .dark .input-3d {
+    background-color: rgba(15, 23, 42, 0.8);
+    box-shadow:
+      inset 0 2px 4px 0 rgba(0, 0, 0, 0.4),
+      0 1px 0 0 rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+  }
+  .input-3d:focus {
+    background-color: #ffffff;
+    box-shadow:
+      inset 0 1px 2px 0 rgba(99, 102, 241, 0.1),
+      0 0 0 3px rgba(99, 102, 241, 0.2),
+      0 2px 8px -2px rgba(99, 102, 241, 0.15);
+    border-color: #6366f1;
+    outline: none;
+  }
+  .dark .input-3d:focus {
+    background-color: rgba(30, 41, 59, 0.95);
+    box-shadow:
+      inset 0 1px 2px 0 rgba(139, 92, 246, 0.2),
+      0 0 0 3px rgba(139, 92, 246, 0.3),
+      0 2px 8px -2px rgba(139, 92, 246, 0.3);
+    border-color: #8b5cf6;
+  }
+
+  /* 3D-bevel highlight & layered shadow effect for primary result cards */
+  .card-bevel-3d {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.95) 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 1),
+      0 2px 0 0 rgba(226, 232, 240, 0.8),
+      0 8px 20px -4px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(203, 213, 225, 0.8);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease;
+  }
+
+  .dark .card-bevel-3d {
+    background-image: linear-gradient(180deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+      0 2px 0 0 rgba(15, 23, 42, 0.9),
+      0 10px 24px -4px rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(51, 65, 85, 0.85);
+  }
+
+  .card-bevel-3d:hover {
+    transform: translateY(-2px) scale(1.005);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 1),
+      0 3px 0 0 rgba(199, 210, 254, 0.8),
+      0 14px 28px -6px rgba(79, 70, 229, 0.15);
+    border-color: rgba(99, 102, 241, 0.6);
+  }
+
+  .dark .card-bevel-3d:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
+      0 3px 0 0 rgba(15, 23, 42, 0.95),
+      0 16px 32px -6px rgba(139, 92, 246, 0.3);
+    border-color: rgba(139, 92, 246, 0.6);
+  }
+}
+
+/* Accessibility: Strict reduced-motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .card-bevel-3d:hover,
+  .btn-3d-push:active,
+  .interactive-tactile:hover,
+  .interactive-tactile:active {
+    transform: none !important;
+  }
+}
+

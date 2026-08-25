@@ -1,0 +1,6 @@
+{
+  "name": "MockTrack",
+  "description": "Track Every Mock. Improve Every Score.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

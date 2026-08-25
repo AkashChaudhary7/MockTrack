@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.mocktrack.twa",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7C:0F:8A:2F:3C:90:8E:56:4C:11:80:AA:32:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF"
+      ]
+    }
+  }
+]
