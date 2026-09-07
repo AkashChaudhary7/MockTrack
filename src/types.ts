@@ -63,6 +63,14 @@ export interface AchievementBadge {
   xpReward: number;
 }
 
+export interface SubjectGoal {
+  id: string;
+  subjectName: string;
+  targetScore: number;
+  maxMarks: number;
+  deadline?: string;
+}
+
 export interface MockAttempt {
   id: string;
   profileId: string;
@@ -94,10 +102,13 @@ export interface ExamProfile {
   name: string; // e.g., "SSC CGL 2026 Tier-1"
   shortCode: string; // e.g., "SSC CGL"
   totalMarks: number;
+  targetScore?: number; // Target goal score e.g. 160 / 200
   defaultDurationMinutes: number;
   examDate?: string; // YYYY-MM-DD
   negativeMarkingRatio: number; // e.g. 0.5 (1/4th penalty of 2 marks) or 0.33
   isSelected: boolean;
+  subjectGoals?: SubjectGoal[];
+  syllabusProgress?: number; // e.g. 68%
 }
 
 export interface PlatformInfo {
@@ -112,11 +123,13 @@ export interface PlatformInfo {
   description: string;
 }
 
+export type ThemeMode = "light" | "dark" | "system";
+
 export interface CandidateProfile {
   name: string;
   avatarSeed: string;
   activeExamProfileId: string;
-  theme: "light" | "dark";
+  theme: ThemeMode;
   showSplashOnStartup: boolean;
   reviewPoints?: number;
   reviewStreakDays?: number;
@@ -124,6 +137,34 @@ export interface CandidateProfile {
   language?: "en" | "hi" | "system";
   recentPlatforms?: PlatformId[];
   frequentlyUsedWeakAreas?: string[];
+  weeklyGoal?: number; // target mocks per week, default 7 (1/day)
+  photoUrl?: string; // Optional user uploaded photo/avatar
+  gender?: "male" | "female"; // Male or Female aspirant iconography
 }
 
-export type NavTab = "dashboard" | "history" | "log" | "insights" | "reports" | "profile" | "guide" | "privacy";
+export type ScoreCardTheme = "obsidian" | "indigo" | "emerald" | "minimal";
+
+export interface ScoreCardConfig {
+  theme: ScoreCardTheme;
+  avatarType: "initials" | "photo" | "emoji";
+  avatarEmoji?: string;
+  photoUrl?: string;
+  scope: "current_exam" | "all_exams";
+  showStreak: boolean;
+  showPracticeTime: boolean;
+  showLongestStreak: boolean;
+  showWeeklyMocks: boolean;
+  showAccuracy: boolean;
+}
+
+export type NavTab =
+  | "dashboard"
+  | "history"
+  | "log"
+  | "insights"
+  | "reports"
+  | "profile"
+  | "guide"
+  | "privacy"
+  | "calendar"
+  | "settings";

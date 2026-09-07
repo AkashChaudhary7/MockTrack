@@ -6,23 +6,26 @@ interface NameEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentName: string;
-  onSaveName: (name: string) => void;
+  currentGender?: "male" | "female";
+  onSaveName: (name: string, gender?: "male" | "female") => void;
 }
 
 export const NameEditModal: React.FC<NameEditModalProps> = ({
   isOpen,
   onClose,
   currentName,
+  currentGender = "male",
   onSaveName,
 }) => {
   const [name, setName] = useState<string>(currentName);
+  const [gender, setGender] = useState<"male" | "female">(currentGender);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onSaveName(name.trim());
+      onSaveName(name.trim(), gender);
       onClose();
     }
   };
@@ -39,7 +42,7 @@ export const NameEditModal: React.FC<NameEditModalProps> = ({
           <div className="flex items-center gap-2">
             <User className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h3 className="font-black text-sm text-slate-900 dark:text-slate-100">
-              Edit Candidate Name
+              Edit Candidate Identity
             </h3>
           </div>
           <button
@@ -64,6 +67,39 @@ export const NameEditModal: React.FC<NameEditModalProps> = ({
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+              Aspirant Iconography
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setGender("male")}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-xs font-black transition-all cursor-pointer ${
+                  gender === "male"
+                    ? "bg-indigo-50 dark:bg-indigo-950/80 border-indigo-500 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/30"
+                    : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                <span className="text-lg">👨‍🎓</span>
+                <span>Male Aspirant</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGender("female")}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-xs font-black transition-all cursor-pointer ${
+                  gender === "female"
+                    ? "bg-rose-50 dark:bg-rose-950/80 border-rose-500 text-rose-700 dark:text-rose-300 ring-2 ring-rose-500/30"
+                    : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                }`}
+              >
+                <span className="text-lg">👩‍🎓</span>
+                <span>Female Aspirant</span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
@@ -76,7 +112,7 @@ export const NameEditModal: React.FC<NameEditModalProps> = ({
               type="submit"
               className="py-2.5 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-xs cursor-pointer"
             >
-              Save Name
+              Save Profile
             </button>
           </div>
         </form>

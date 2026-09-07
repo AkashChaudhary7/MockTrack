@@ -75,18 +75,18 @@ export const SubjectRadarChart: React.FC<SubjectRadarChartProps> = ({ metrics })
     .join(" ");
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm transition-colors">
+    <div className="card-luminous rounded-2xl p-5 transition-colors">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <h3 className="text-base font-black font-display text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Target className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             Subject Mastery Radar
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            4-Section Strength & Weakness Polar Analysis
+            4-Section Strength &amp; Weakness Polar Analysis
           </p>
         </div>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+        <span className="text-xs font-black font-display px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
           Tier 1 Core
         </span>
       </div>
@@ -250,7 +250,7 @@ export const SubjectRadarChart: React.FC<SubjectRadarChartProps> = ({ metrics })
                 </span>
               </div>
 
-              <h4 className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-1">
+              <h4 className="text-base font-black font-display text-slate-900 dark:text-slate-100 mt-1">
                 {selectedSubject.name}
               </h4>
 
@@ -259,8 +259,8 @@ export const SubjectRadarChart: React.FC<SubjectRadarChartProps> = ({ metrics })
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                     Avg Marks
                   </span>
-                  <div className="text-base font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
-                    {selectedSubject.scoreAvg} <span className="text-xs text-slate-400 font-normal">/ {selectedSubject.maxAvg}</span>
+                  <div className="text-base font-black font-display text-slate-900 dark:text-slate-100 mt-0.5">
+                    {selectedSubject.scoreAvg} <span className="text-xs text-slate-400 font-normal font-sans">/ {selectedSubject.maxAvg}</span>
                   </div>
                 </div>
 
@@ -268,7 +268,7 @@ export const SubjectRadarChart: React.FC<SubjectRadarChartProps> = ({ metrics })
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                     Accuracy
                   </span>
-                  <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">
+                  <div className="text-base font-black font-display text-indigo-600 dark:text-indigo-400 mt-0.5">
                     {selectedSubject.accuracy || Math.round(selectedSubject.percentage * 0.95)}%
                   </div>
                 </div>

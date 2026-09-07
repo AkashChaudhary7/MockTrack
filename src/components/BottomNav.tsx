@@ -1,17 +1,26 @@
 import React from "react";
 import { NavTab } from "../types";
-import { LayoutDashboard, History, LineChart, User, Plus } from "lucide-react";
-import { motion } from "motion/react";
+import {
+  LayoutDashboard,
+  History,
+  LineChart,
+  Plus,
+  User,
+} from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { HapticService } from "../services/HapticService";
 
 interface BottomNavProps {
   activeTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
-  onOpenLogModal: () => void;
+  onOpenLogModal?: () => void;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onSelectTab, onOpenLogModal }) => {
+export const BottomNav: React.FC<BottomNavProps> = ({
+  activeTab,
+  onSelectTab,
+  onOpenLogModal,
+}) => {
   const { t } = useTranslation();
 
   const handleTabClick = (tab: NavTab) => {
@@ -21,144 +30,196 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onSelectTab, on
 
   const handleLogClick = () => {
     HapticService.selection();
-    onOpenLogModal();
+    if (onOpenLogModal) {
+      onOpenLogModal();
+    } else {
+      onSelectTab("log");
+    }
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-1.5 px-3 transition-colors shadow-lg">
-      <div className="max-w-md mx-auto flex items-center justify-between">
-        {/* Tab 1: Home */}
-        <button
-          onClick={() => handleTabClick("dashboard")}
-          className="relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer group"
-        >
-          {activeTab === "dashboard" && (
-            <motion.div
-              layoutId="activePill"
-              className="absolute inset-0 bg-indigo-100 dark:bg-indigo-950/80 rounded-2xl -z-10"
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+    <nav className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 sm:pb-4 pt-1 pointer-events-none flex justify-center">
+      <div className="w-full max-w-[360px] relative pointer-events-auto select-none">
+        
+        {/* Compact, Ultra-Sharp Scooped Floating Dock */}
+        <div className="relative w-full h-[58px] drop-shadow-[0_10px_25px_rgba(15,23,42,0.10)] dark:drop-shadow-[0_14px_30px_rgba(0,0,0,0.65)]">
+          <svg
+            viewBox="0 0 360 58"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-full h-full"
+            preserveAspectRatio="none"
+          >
+            {/* Organic Scoop Curve optimized for compact height */}
+            <path
+              d="M 22 0 
+                 L 138 0 
+                 C 149 0 154 4 159 12 
+                 C 164 20 169 24 180 24 
+                 C 191 24 196 20 201 12 
+                 C 206 4 211 0 222 0 
+                 L 338 0 
+                 A 22 22 0 0 1 360 22 
+                 L 360 36 
+                 A 22 22 0 0 1 338 58 
+                 L 22 58 
+                 A 22 22 0 0 1 0 36 
+                 L 0 22 
+                 A 22 22 0 0 1 22 0 
+                 Z"
+              className="fill-white/95 dark:fill-slate-900/95 stroke-slate-200/90 dark:stroke-slate-800"
+              strokeWidth="1.2"
             />
-          )}
-          <LayoutDashboard
-            className={`w-5 h-5 transition-transform duration-200 ${
-              activeTab === "dashboard"
-                ? "text-indigo-600 dark:text-indigo-400 scale-110 stroke-[2.5]"
-                : "text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 stroke-[1.75]"
-            }`}
-          />
-          <span
-            className={`text-[10px] font-extrabold mt-0.5 transition-colors ${
-              activeTab === "dashboard"
-                ? "text-indigo-700 dark:text-indigo-300"
-                : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            {t.dashboardTab}
-          </span>
-        </button>
+          </svg>
 
-        {/* Tab 2: History */}
-        <button
-          onClick={() => handleTabClick("history")}
-          className="relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer group"
-        >
-          {activeTab === "history" && (
-            <motion.div
-              layoutId="activePill"
-              className="absolute inset-0 bg-indigo-100 dark:bg-indigo-950/80 rounded-2xl -z-10"
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            />
-          )}
-          <History
-            className={`w-5 h-5 transition-transform duration-200 ${
-              activeTab === "history"
-                ? "text-indigo-600 dark:text-indigo-400 scale-110 stroke-[2.5]"
-                : "text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 stroke-[1.75]"
-            }`}
-          />
-          <span
-            className={`text-[10px] font-extrabold mt-0.5 transition-colors ${
-              activeTab === "history"
-                ? "text-indigo-700 dark:text-indigo-300"
-                : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            History
-          </span>
-        </button>
+          {/* 4 Sharp Navigation Items - pointer-events-none on parent to avoid blocking FAB */}
+          <div className="absolute inset-0 flex items-center justify-between px-2 pt-0.5 pointer-events-none">
+            
+            {/* Tab 1: Dashboard */}
+            <button
+              type="button"
+              onClick={() => handleTabClick("dashboard")}
+              className="flex-1 flex flex-col items-center justify-center py-1 cursor-pointer pointer-events-auto group active:scale-90 transition-transform duration-150"
+            >
+              <div className="flex flex-col items-center justify-center">
+                <LayoutDashboard
+                  className={`w-4.5 h-4.5 transition-colors duration-150 ${
+                    activeTab === "dashboard"
+                      ? "text-indigo-600 dark:text-indigo-400 stroke-[2.6]"
+                      : "text-slate-400 dark:text-slate-500 stroke-[1.8] group-hover:text-slate-700 dark:group-hover:text-slate-300"
+                  }`}
+                />
+                <span
+                  className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors ${
+                    activeTab === "dashboard"
+                      ? "text-indigo-600 dark:text-indigo-400 font-black"
+                      : "text-slate-400 dark:text-slate-500 font-bold group-hover:text-slate-600"
+                  }`}
+                >
+                  {t.dashboardTab || "Dashboard"}
+                </span>
+              </div>
+            </button>
 
-        {/* Central Prominent + LOG Action Button */}
-        <div className="relative -top-3">
-          <button
-            onClick={handleLogClick}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-indigo-500/30 active:scale-95 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>LOG</span>
-          </button>
+            {/* Tab 2: History */}
+            <button
+              type="button"
+              onClick={() => handleTabClick("history")}
+              className="flex-1 flex flex-col items-center justify-center py-1 cursor-pointer pointer-events-auto group active:scale-90 transition-transform duration-150"
+            >
+              <div className="flex flex-col items-center justify-center">
+                <History
+                  className={`w-4.5 h-4.5 transition-colors duration-150 ${
+                    activeTab === "history"
+                      ? "text-indigo-600 dark:text-indigo-400 stroke-[2.6]"
+                      : "text-slate-400 dark:text-slate-500 stroke-[1.8] group-hover:text-slate-700 dark:group-hover:text-slate-300"
+                  }`}
+                />
+                <span
+                  className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors ${
+                    activeTab === "history"
+                      ? "text-indigo-600 dark:text-indigo-400 font-black"
+                      : "text-slate-400 dark:text-slate-500 font-bold group-hover:text-slate-600"
+                  }`}
+                >
+                  History
+                </span>
+              </div>
+            </button>
+
+            {/* Center Notch Spacer - strictly non-interactive */}
+            <div className="w-16 shrink-0 pointer-events-none" />
+
+            {/* Tab 3: Analytics / Insights */}
+            <button
+              type="button"
+              onClick={() => handleTabClick("insights")}
+              className="flex-1 flex flex-col items-center justify-center py-1 cursor-pointer pointer-events-auto group active:scale-90 transition-transform duration-150"
+            >
+              <div className="flex flex-col items-center justify-center">
+                <LineChart
+                  className={`w-4.5 h-4.5 transition-colors duration-150 ${
+                    activeTab === "insights"
+                      ? "text-indigo-600 dark:text-indigo-400 stroke-[2.6]"
+                      : "text-slate-400 dark:text-slate-500 stroke-[1.8] group-hover:text-slate-700 dark:group-hover:text-slate-300"
+                  }`}
+                />
+                <span
+                  className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors ${
+                    activeTab === "insights"
+                      ? "text-indigo-600 dark:text-indigo-400 font-black"
+                      : "text-slate-400 dark:text-slate-500 font-bold group-hover:text-slate-600"
+                  }`}
+                >
+                  {t.insightsTab || "Analytics"}
+                </span>
+              </div>
+            </button>
+
+            {/* Tab 4: Profile */}
+            <button
+              type="button"
+              onClick={() => handleTabClick("profile")}
+              className="flex-1 flex flex-col items-center justify-center py-1 cursor-pointer pointer-events-auto group active:scale-90 transition-transform duration-150"
+            >
+              <div className="flex flex-col items-center justify-center">
+                <User
+                  className={`w-4.5 h-4.5 transition-colors duration-150 ${
+                    activeTab === "profile"
+                      ? "text-indigo-600 dark:text-indigo-400 stroke-[2.6]"
+                      : "text-slate-400 dark:text-slate-500 stroke-[1.8] group-hover:text-slate-700 dark:group-hover:text-slate-300"
+                  }`}
+                />
+                <span
+                  className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors ${
+                    activeTab === "profile"
+                      ? "text-indigo-600 dark:text-indigo-400 font-black"
+                      : "text-slate-400 dark:text-slate-500 font-bold group-hover:text-slate-600"
+                  }`}
+                >
+                  Profile
+                </span>
+              </div>
+            </button>
+
+          </div>
+
+          {/* Elevated Sharp Compact FAB inside Scooped Notch - Rendered on top with z-20 & unified clickable area */}
+          <div className="absolute left-1/2 -translate-x-1/2 -top-4.5 z-20 flex flex-col items-center pointer-events-auto">
+            <button
+              type="button"
+              onClick={handleLogClick}
+              className="group flex flex-col items-center justify-center cursor-pointer p-0.5 focus:outline-hidden select-none active:scale-95 transition-transform duration-150"
+              title="Log Mock Test"
+              aria-label="Log Mock Test"
+            >
+              {/* Ambient Diffused Glow + Button Circle */}
+              <div className="relative">
+                <div className="absolute -inset-1 rounded-full bg-indigo-500/25 dark:bg-indigo-500/40 blur-md pointer-events-none group-hover:bg-indigo-500/40 transition-colors" />
+
+                <div
+                  className={`relative w-11 h-11 rounded-full bg-gradient-to-b from-indigo-600 to-indigo-700 dark:from-indigo-500 dark:to-indigo-600 text-white flex items-center justify-center shadow-[0_6px_16px_rgba(79,70,229,0.38)] active:shadow-[0_2px_8px_rgba(79,70,229,0.3)] group-hover:scale-105 transition-all duration-200 border-2 border-white dark:border-slate-800 ring-2 ring-slate-200/50 dark:ring-slate-800/80 ${
+                    activeTab === "log" ? "ring-indigo-400 dark:ring-indigo-400 scale-105" : ""
+                  }`}
+                >
+                  <Plus className="w-5 h-5 stroke-[3] text-white drop-shadow-xs transition-transform duration-200 group-hover:rotate-90" />
+                </div>
+              </div>
+
+              {/* Micro Label directly inside clickable button */}
+              <span
+                className={`text-[9.5px] font-black mt-1 tracking-tight whitespace-nowrap leading-none transition-colors ${
+                  activeTab === "log"
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-500 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300"
+                }`}
+              >
+                Log Mock
+              </span>
+            </button>
+          </div>
         </div>
-
-        {/* Tab 3: Analytics */}
-        <button
-          onClick={() => handleTabClick("insights")}
-          className="relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer group"
-        >
-          {activeTab === "insights" && (
-            <motion.div
-              layoutId="activePill"
-              className="absolute inset-0 bg-indigo-100 dark:bg-indigo-950/80 rounded-2xl -z-10"
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            />
-          )}
-          <LineChart
-            className={`w-5 h-5 transition-transform duration-200 ${
-              activeTab === "insights"
-                ? "text-indigo-600 dark:text-indigo-400 scale-110 stroke-[2.5]"
-                : "text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 stroke-[1.75]"
-            }`}
-          />
-          <span
-            className={`text-[10px] font-extrabold mt-0.5 transition-colors ${
-              activeTab === "insights"
-                ? "text-indigo-700 dark:text-indigo-300"
-                : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            {t.insightsTab}
-          </span>
-        </button>
-
-        {/* Tab 4: Profile */}
-        <button
-          onClick={() => handleTabClick("profile")}
-          className="relative flex flex-col items-center py-1 px-3 rounded-2xl transition-all cursor-pointer group"
-        >
-          {activeTab === "profile" && (
-            <motion.div
-              layoutId="activePill"
-              className="absolute inset-0 bg-indigo-100 dark:bg-indigo-950/80 rounded-2xl -z-10"
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            />
-          )}
-          <User
-            className={`w-5 h-5 transition-transform duration-200 ${
-              activeTab === "profile"
-                ? "text-indigo-600 dark:text-indigo-400 scale-110 stroke-[2.5]"
-                : "text-slate-500 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 stroke-[1.75]"
-            }`}
-          />
-          <span
-            className={`text-[10px] font-extrabold mt-0.5 transition-colors ${
-              activeTab === "profile"
-                ? "text-indigo-700 dark:text-indigo-300"
-                : "text-slate-500 dark:text-slate-400"
-            }`}
-          >
-            Profile
-          </span>
-        </button>
       </div>
     </nav>
   );
 };
-

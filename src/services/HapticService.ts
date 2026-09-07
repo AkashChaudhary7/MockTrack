@@ -1,46 +1,46 @@
 /**
- * HapticService: Provides tactile/vibrational feedback for PWA & future Capacitor builds.
+ * HapticService: Provides tactile/vibrational feedback for PWA & mobile browsers.
  * Uses Web Vibration API (navigator.vibrate) when supported.
  */
 export class HapticService {
-  private static isSupported(): boolean {
-    return typeof window !== "undefined" && "navigator" in window && "vibrate" in navigator;
+  public static isSupported(): boolean {
+    return typeof window !== "undefined" && typeof navigator !== "undefined" && "vibrate" in navigator;
   }
 
   // Light tap for button press or tab selection
   static lightTap(): void {
     if (this.isSupported()) {
       try {
-        navigator.vibrate(12);
+        navigator.vibrate(15);
       } catch (e) {
         /* ignore */
       }
     }
   }
 
-  // Medium selection click
+  // Medium selection click (e.g. switching profile, toggling filter)
   static selection(): void {
     if (this.isSupported()) {
       try {
-        navigator.vibrate(20);
+        navigator.vibrate(25);
       } catch (e) {
         /* ignore */
       }
     }
   }
 
-  // Success confirmation pulse
+  // Success confirmation pulse (e.g. saving mock test or goal date)
   static success(): void {
     if (this.isSupported()) {
       try {
-        navigator.vibrate([25, 50, 25]);
+        navigator.vibrate([30, 50, 30]);
       } catch (e) {
         /* ignore */
       }
     }
   }
 
-  // Personal Best achievement double pulse
+  // Achievement / Major milestone pulse (e.g. mock logged, PDF exported)
   static achievement(): void {
     if (this.isSupported()) {
       try {
@@ -73,3 +73,4 @@ export class HapticService {
     }
   }
 }
+

@@ -3,20 +3,27 @@ import { Plus } from "lucide-react";
 import { motion } from "motion/react";
 
 interface EmptyStateProps {
-  type: "history" | "insights" | "reports";
+  type: "history" | "insights" | "reports" | "analytics";
   onAction?: () => void;
   actionText?: string;
+  actionLabel?: string;
   title?: string;
   subtitle?: string;
+  description?: string;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
   type,
   onAction,
   actionText,
+  actionLabel,
   title,
   subtitle,
+  description,
 }) => {
+  const displayActionText = actionLabel || actionText;
+  const displaySubtitle = description || subtitle;
+
   if (type === "history") {
     return (
       <div id="empty-state-history" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 text-center space-y-5 card-bevel-3d max-w-lg mx-auto my-4">
@@ -48,11 +55,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight font-display">
             {title || "No Mock Tests Logged Yet"}
           </h3>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mx-auto">
-            {subtitle || "Record your first mock score to track accuracy, rank predictions, and subject performance over time."}
+            {displaySubtitle || "Record your first mock score to track accuracy, rank predictions, and subject performance over time."}
           </p>
         </div>
 
@@ -62,17 +69,17 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             whileTap={{ scale: 0.96 }}
             whileHover={{ y: -1 }}
             onClick={onAction}
-            className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-indigo-600/20 inline-flex items-center gap-2 cursor-pointer transition-all"
+            className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black font-display text-xs sm:text-sm rounded-2xl shadow-md shadow-indigo-600/30 inline-flex items-center gap-2 cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>{actionText || "Log First Mock"}</span>
+            <span>{displayActionText || "Log First Mock"}</span>
           </motion.button>
         )}
       </div>
     );
   }
 
-  if (type === "insights") {
+  if (type === "insights" || type === "analytics") {
     return (
       <div id="empty-state-insights" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 text-center space-y-5 card-bevel-3d max-w-lg mx-auto my-4">
         {/* Analytics Adaptive SVG Illustration */}
@@ -99,11 +106,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight font-display">
             {title || "Analytics Await Your First Mock"}
           </h3>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mx-auto">
-            {subtitle || "Log a mock test to calculate baseline rating, subject radar breakdown, and cutoff clearance odds."}
+            {displaySubtitle || "Log a mock test to calculate baseline rating, subject radar breakdown, and cutoff clearance odds."}
           </p>
         </div>
 
@@ -113,10 +120,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             whileTap={{ scale: 0.96 }}
             whileHover={{ y: -1 }}
             onClick={onAction}
-            className="px-5 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-indigo-600/20 inline-flex items-center gap-2 cursor-pointer transition-all"
+            className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black font-display text-xs sm:text-sm rounded-2xl shadow-md shadow-indigo-600/30 inline-flex items-center gap-2 cursor-pointer transition-all"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>{actionText || "Log Mock To Unlock Insights"}</span>
+            <span>{displayActionText || "Log Mock To Unlock Insights"}</span>
           </motion.button>
         )}
       </div>

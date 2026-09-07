@@ -16,11 +16,13 @@ import { SplashOnboarding } from "./components/SplashOnboarding";
 import { TopAppBar } from "./components/TopAppBar";
 import { BottomNav } from "./components/BottomNav";
 import { DashboardScreen } from "./components/DashboardScreen";
+import { LogMockScreen } from "./components/LogMockScreen";
 import { MockLogScreen } from "./components/MockLogScreen";
 import { HistoryScreen } from "./components/HistoryScreen";
 import { InsightsScreen } from "./components/InsightsScreen";
 import { ReportsScreen } from "./components/ReportsScreen";
 import { ProfileScreen } from "./components/ProfileScreen";
+import { SettingsScreen } from "./components/SettingsScreen";
 import { AppGuideScreen } from "./components/AppGuideScreen";
 import { PrivacyScreen } from "./components/PrivacyScreen";
 import { LogMockModal } from "./components/LogMockModal";
@@ -33,11 +35,35 @@ import { OfflineBanner } from "./components/OfflineBanner";
 import { PwaInstallBanner } from "./components/PwaInstallBanner";
 import { LanguageProvider } from "./i18n/LanguageContext";
 import { StorageService } from "./services/StorageService";
+import { firePersonalBestConfetti } from "./utils/confetti";
+import { HapticService } from "./services/HapticService";
+import { ScoreCardModal } from "./components/ScoreCardModal";
+import { detectMilestoneOnMockSave, MilestoneEvent } from "./utils/milestones";
 
 export default function App() {
   const [candidate, setCandidate] = useState<CandidateProfile>(() => {
     const saved = localStorage.getItem("mocktrack_candidate");
-    return saved ? JSON.parse(saved) : INITIAL_CANDIDATE;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Clear any old demo reviewPoints or demo streak
+        if (parsed.reviewPoints === 120 && parsed.reviewStreakDays === 3) {
+          const cleaned = {
+            ...parsed,
+            name: parsed.name === "Aarav Sharma" ? "Aspirant" : parsed.name,
+            reviewPoints: 0,
+            reviewStreakDays: 0,
+            unlockedBadgeIds: [],
+          };
+          localStorage.setItem("mocktrack_candidate", JSON.stringify(cleaned));
+          return cleaned;
+        }
+        return parsed;
+      } catch {
+        return INITIAL_CANDIDATE;
+      }
+    }
+    return INITIAL_CANDIDATE;
   });
 
   const [examProfiles, setExamProfiles] = useState<ExamProfile[]>(() => {
@@ -47,19 +73,46 @@ export default function App() {
 
   const [attempts, setAttempts] = useState<MockAttempt[]>(() => {
     const saved = localStorage.getItem("mocktrack_attempts");
-    return saved ? JSON.parse(saved) : INITIAL_MOCK_ATTEMPTS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Guarantee no demo data (filter out any mock-1..mock-7 seed data)
+        const nonDemo = Array.isArray(parsed)
+          ? parsed.filter((a: MockAttempt) => !a.id?.startsWith("mock-"))
+          : [];
+        if (nonDemo.length !== parsed.length) {
+          localStorage.setItem("mocktrack_attempts", JSON.stringify(nonDemo));
+        }
+        return nonDemo;
+      } catch {
+        return [];
+      }
+    }
+    return [];
   });
 
   const [mistakes, setMistakes] = useState<MistakeReviewItem[]>(() => {
     const saved = localStorage.getItem("mocktrack_mistakes");
-    return saved ? JSON.parse(saved) : INITIAL_MISTAKES;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const nonDemo = Array.isArray(parsed)
+          ? parsed.filter((m: MistakeReviewItem) => !m.id?.startsWith("mst-"))
+          : [];
+        if (nonDemo.length !== parsed.length) {
+          localStorage.setItem("mocktrack_mistakes", JSON.stringify(nonDemo));
+        }
+        return nonDemo;
+      } catch {
+        return [];
+      }
+    }
+    return [];
   });
 
   const [weakAreasHistory, setWeakAreasHistory] = useState<string[]>(() => {
     const saved = localStorage.getItem("mocktrack_weak_areas_history");
-    return saved
-      ? JSON.parse(saved)
-      : ["Geometry", "Algebra", "Current Affairs", "Time & Work", "Reading Comprehension"];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [activeTab, setActiveTab] = useState<NavTab>(() => {
@@ -73,14 +126,7 @@ export default function App() {
     return "dashboard";
   });
   const [showSplash, setShowSplash] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const path = window.location.pathname;
-      const search = window.location.search;
-      if (path.includes("/privacy") || search.includes("privacy")) {
-        return false;
-      }
-    }
-    return true;
+    return false;
   });
 
   // Modals state
@@ -91,6 +137,9 @@ export default function App() {
   const [isEditNameOpen, setIsEditNameOpen] = useState<boolean>(false);
   const [isSetDateOpen, setIsSetDateOpen] = useState<boolean>(false);
   const [isAddProfileOpen, setIsAddProfileOpen] = useState<boolean>(false);
+  const [isScoreCardOpen, setIsScoreCardOpen] = useState<boolean>(false);
+  const [scoreCardMilestoneTitle, setScoreCardMilestoneTitle] = useState<string | undefined>(undefined);
+  const [activeMilestone, setActiveMilestone] = useState<MilestoneEvent | null>(null);
 
   // Hydrate from IndexedDB on initial load
   useEffect(() => {
@@ -133,13 +182,38 @@ export default function App() {
     localStorage.setItem("mocktrack_weak_areas_history", JSON.stringify(weakAreasHistory));
   }, [weakAreasHistory]);
 
-  // Sync HTML root dark class
+  // Perfect Theme Synchronization for Dark, Light, and System Modes
   useEffect(() => {
     const root = document.documentElement;
-    if (candidate.theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+
+    const updateTheme = () => {
+      let isDark = false;
+      if (candidate.theme === "dark") {
+        isDark = true;
+      } else if (candidate.theme === "light") {
+        isDark = false;
+      } else {
+        // System mode: query OS preference
+        isDark = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      }
+
+      if (isDark) {
+        root.classList.add("dark");
+        metaThemeColor?.setAttribute("content", "#020617");
+      } else {
+        root.classList.remove("dark");
+        metaThemeColor?.setAttribute("content", "#f8fafc");
+      }
+    };
+
+    updateTheme();
+
+    if (candidate.theme === "system" && typeof window !== "undefined") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleSystemChange = () => updateTheme();
+      mediaQuery.addEventListener("change", handleSystemChange);
+      return () => mediaQuery.removeEventListener("change", handleSystemChange);
     }
   }, [candidate.theme]);
 
@@ -149,12 +223,23 @@ export default function App() {
     examProfiles[0] ||
     INITIAL_EXAM_PROFILES[0];
 
-  // Theme Toggle
-  const handleToggleTheme = () => {
+  // Explicit Theme Setting (light, dark, system)
+  const handleSetTheme = (newTheme: "light" | "dark" | "system") => {
     setCandidate((prev) => ({
       ...prev,
-      theme: prev.theme === "dark" ? "light" : "dark",
+      theme: newTheme,
     }));
+  };
+
+  // Quick theme toggle in top bar (cycles light -> dark -> system)
+  const handleToggleTheme = () => {
+    setCandidate((prev) => {
+      let nextTheme: "light" | "dark" | "system";
+      if (prev.theme === "light") nextTheme = "dark";
+      else if (prev.theme === "dark") nextTheme = "system";
+      else nextTheme = "light";
+      return { ...prev, theme: nextTheme };
+    });
   };
 
   // Profile Selection
@@ -170,8 +255,30 @@ export default function App() {
     });
   };
 
+  // Open Share Score Card Modal
+  const handleOpenScoreCard = (milestoneTitle?: string) => {
+    setScoreCardMilestoneTitle(milestoneTitle);
+    setIsScoreCardOpen(true);
+    HapticService.lightTap();
+  };
+
+  // Update candidate weekly goal
+  const handleUpdateWeeklyGoal = (newGoal: number) => {
+    setCandidate((prev) => ({ ...prev, weeklyGoal: newGoal }));
+  };
+
   // Save / Update Mock
   const handleSaveMock = async (newAttemptData: Omit<MockAttempt, "id">) => {
+    // Check if new attempt achieves a new personal best score for the exam profile
+    const existingExamAttempts = attempts.filter(
+      (a) => a.profileId === newAttemptData.profileId && a.id !== editingAttempt?.id
+    );
+    const prevMax = existingExamAttempts.length > 0 
+      ? Math.max(...existingExamAttempts.map((a) => a.score)) 
+      : -Infinity;
+
+    const isNewPersonalBest = newAttemptData.score > prevMax && existingExamAttempts.length > 0;
+
     if (editingAttempt && editingAttempt.id) {
       // Update existing
       const updatedMock: MockAttempt = { ...newAttemptData, id: editingAttempt.id };
@@ -179,6 +286,7 @@ export default function App() {
         prev.map((a) => (a.id === editingAttempt.id ? updatedMock : a))
       );
       await StorageService.saveAttempt(updatedMock).catch(() => {});
+      HapticService.success();
     } else {
       // Add new
       const newAttempt: MockAttempt = {
@@ -187,8 +295,62 @@ export default function App() {
       };
       setAttempts((prev) => [newAttempt, ...prev]);
       await StorageService.saveAttempt(newAttempt).catch(() => {});
+
+      // Check for milestone event (Personal Best, Mock Milestones, Streaks, Performance, Time)
+      const milestone = detectMilestoneOnMockSave(attempts, newAttempt, activeExam);
+      if (milestone) {
+        setActiveMilestone(milestone);
+        if (milestone.type === "personal_best") {
+          firePersonalBestConfetti();
+        }
+        HapticService.achievement();
+      } else if (isNewPersonalBest) {
+        firePersonalBestConfetti();
+        HapticService.achievement();
+      } else {
+        HapticService.success();
+      }
     }
+
     setEditingAttempt(undefined);
+  };
+
+  // Bulk add multiple attempts (e.g. from CSV import)
+  const handleBulkAddAttempts = async (newAttemptsData: Omit<MockAttempt, "id">[]) => {
+    if (newAttemptsData.length === 0) return;
+
+    const profileId = newAttemptsData[0].profileId;
+    const existingExamAttempts = attempts.filter((a) => a.profileId === profileId);
+    const prevMax = existingExamAttempts.length > 0
+      ? Math.max(...existingExamAttempts.map((a) => a.score))
+      : -Infinity;
+    const maxImportedScore = Math.max(...newAttemptsData.map((a) => a.score));
+
+    const isNewPersonalBest = maxImportedScore > prevMax && existingExamAttempts.length > 0;
+
+    const createdAttempts: MockAttempt[] = newAttemptsData.map((data, idx) => ({
+      ...data,
+      id: `mock-bulk-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
+    }));
+
+    setAttempts((prev) => [...createdAttempts, ...prev]);
+    await Promise.all(
+      createdAttempts.map((att) => StorageService.saveAttempt(att).catch(() => {}))
+    );
+
+    if (isNewPersonalBest) {
+      firePersonalBestConfetti();
+      HapticService.achievement();
+    } else {
+      HapticService.success();
+    }
+  };
+
+  // Update exam profile (e.g. Subject Goals)
+  const handleUpdateExamProfile = (updatedProfile: ExamProfile) => {
+    setExamProfiles((prev) =>
+      prev.map((p) => (p.id === updatedProfile.id ? updatedProfile : p))
+    );
   };
 
   // Delete Mock
@@ -200,22 +362,31 @@ export default function App() {
   // OCR Extraction apply
   const handleApplyExtractedData = (data: Partial<MockAttempt>) => {
     setEditingAttempt(data);
-    setIsLogModalOpen(true);
+    setActiveTab("log");
   };
 
-  // Candidate Name save
-  const handleSaveName = (newName: string) => {
+  // Candidate Name & Aspirant Iconography save
+  const handleSaveName = (newName: string, gender?: "male" | "female") => {
     setCandidate((prev) => ({
       ...prev,
       name: newName,
       avatarSeed: newName.slice(0, 2).toUpperCase(),
+      ...(gender ? { gender } : {}),
     }));
   };
 
-  // Save target date
-  const handleSaveDate = (examId: string, dateStr: string | undefined) => {
+  // Save target date and target score
+  const handleSaveDate = (examId: string, dateStr: string | undefined, targetScore?: number) => {
     setExamProfiles((prev) =>
-      prev.map((p) => (p.id === examId ? { ...p, examDate: dateStr } : p))
+      prev.map((p) =>
+        p.id === examId
+          ? {
+              ...p,
+              examDate: dateStr,
+              ...(targetScore !== undefined ? { targetScore } : {}),
+            }
+          : p
+      )
     );
   };
 
@@ -274,13 +445,40 @@ export default function App() {
 
   return (
     <LanguageProvider>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 bg-grid-pattern text-slate-900 dark:text-slate-100 font-sans transition-colors selection:bg-indigo-500 selection:text-white">
+      <div className="min-h-screen bg-[#FAFCFF] dark:bg-[#090D16] bg-grid-pattern text-slate-900 dark:text-slate-100 font-sans transition-colors selection:bg-indigo-500 selection:text-white">
         {/* Offline Banner Indicator */}
         <OfflineBanner />
 
         {/* 1. Splash & Onboarding Screen */}
         {showSplash && (
-          <SplashOnboarding onDismiss={() => setShowSplash(false)} />
+          <SplashOnboarding
+            candidate={candidate}
+            examProfiles={examProfiles}
+            onComplete={(candidateData, selectedExamId, examConfig) => {
+              setCandidate((prev) => ({
+                ...prev,
+                name: candidateData.name,
+                avatarSeed: candidateData.avatarSeed,
+                activeExamProfileId: selectedExamId,
+              }));
+
+              if (examConfig) {
+                setExamProfiles((prev) =>
+                  prev.map((p) =>
+                    p.id === selectedExamId
+                      ? {
+                          ...p,
+                          targetScore: examConfig.targetScore,
+                          examDate: examConfig.examDate || p.examDate,
+                        }
+                      : p
+                  )
+                );
+              }
+              setShowSplash(false);
+            }}
+            onDismiss={() => setShowSplash(false)}
+          />
         )}
 
         {/* 2. Top App Bar */}
@@ -307,31 +505,49 @@ export default function App() {
               attempts={attempts}
               onOpenLogModal={() => {
                 setEditingAttempt(undefined);
-                setIsLogModalOpen(true);
+                setActiveTab("log");
               }}
               onOpenOcrModal={() => setIsOcrModalOpen(true)}
               onNavigateTab={setActiveTab}
               onSelectAttempt={(att) => {
                 setEditingAttempt(att);
-                setIsLogModalOpen(true);
+                setActiveTab("log");
               }}
               onOpenProfileSwitcher={() => setIsProfileSwitcherOpen(true)}
+              onOpenSetDateModal={() => setIsSetDateOpen(true)}
+              onUpdateExamProfile={handleUpdateExamProfile}
+              onUpdateWeeklyGoal={handleUpdateWeeklyGoal}
+              onOpenScoreCard={handleOpenScoreCard}
+              activeMilestone={activeMilestone}
+              onDismissMilestone={() => setActiveMilestone(null)}
             />
           )}
 
-          {(activeTab === "history" || activeTab === "log") && (
+          {activeTab === "log" && (
+            <LogMockScreen
+              activeExam={activeExam}
+              attempts={attempts}
+              onSaveMock={handleSaveMock}
+              onNavigateTab={setActiveTab}
+              initialData={editingAttempt}
+              onOpenOcrModal={() => setIsOcrModalOpen(true)}
+            />
+          )}
+
+          {activeTab === "history" && (
             <HistoryScreen
               attempts={attempts}
               activeExam={activeExam}
               onEditMock={(mock) => {
                 setEditingAttempt(mock);
-                setIsLogModalOpen(true);
+                setActiveTab("log");
               }}
               onDeleteMock={handleDeleteAttempt}
               onOpenLogModal={() => {
                 setEditingAttempt(undefined);
-                setIsLogModalOpen(true);
+                setActiveTab("log");
               }}
+              onBulkAddAttempts={handleBulkAddAttempts}
             />
           )}
 
@@ -360,6 +576,24 @@ export default function App() {
               onImportData={handleImportData}
               onClearAllData={handleClearAllData}
               onNavigateTab={setActiveTab}
+              onUpdateExamProfile={handleUpdateExamProfile}
+              onOpenScoreCard={handleOpenScoreCard}
+              onUpdateCandidate={(updates) =>
+                setCandidate((prev) => ({ ...prev, ...updates }))
+              }
+            />
+          )}
+
+          {activeTab === "settings" && (
+            <SettingsScreen
+              candidate={candidate}
+              activeExam={activeExam}
+              onSetTheme={handleSetTheme}
+              onToggleTheme={handleToggleTheme}
+              onExportData={handleExportData}
+              onImportData={handleImportData}
+              onClearAllData={handleClearAllData}
+              onNavigateTab={setActiveTab}
             />
           )}
 
@@ -382,7 +616,8 @@ export default function App() {
           onSelectTab={setActiveTab}
           onOpenLogModal={() => {
             setEditingAttempt(undefined);
-            setIsLogModalOpen(true);
+            setActiveTab("log");
+            window.scrollTo({ top: 0, behavior: "smooth" });
           }}
         />
 
@@ -422,6 +657,7 @@ export default function App() {
           isOpen={isEditNameOpen}
           onClose={() => setIsEditNameOpen(false)}
           currentName={candidate.name}
+          currentGender={candidate.gender || "male"}
           onSaveName={handleSaveName}
         />
 
@@ -436,6 +672,15 @@ export default function App() {
           isOpen={isAddProfileOpen}
           onClose={() => setIsAddProfileOpen(false)}
           onAddProfile={handleAddProfile}
+        />
+
+        <ScoreCardModal
+          isOpen={isScoreCardOpen}
+          onClose={() => setIsScoreCardOpen(false)}
+          candidate={candidate}
+          activeExam={activeExam}
+          attempts={attempts}
+          milestoneTitle={scoreCardMilestoneTitle}
         />
       </div>
     </LanguageProvider>

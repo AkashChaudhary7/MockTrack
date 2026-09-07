@@ -3,6 +3,7 @@ import { ExamProfile } from "../types";
 import { calculateDaysLeft } from "../utils/analytics";
 import { motion } from "motion/react";
 import { X, CheckCircle2, Calendar, Plus, Sparkles } from "lucide-react";
+import { HapticService } from "../services/HapticService";
 
 interface ProfileSwitcherModalProps {
   isOpen: boolean;
@@ -49,8 +50,11 @@ export const ProfileSwitcherModal: React.FC<ProfileSwitcherModalProps> = ({
           </div>
 
           <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            onClick={() => {
+              HapticService.lightTap();
+              onClose();
+            }}
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-200 dark:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -65,10 +69,11 @@ export const ProfileSwitcherModal: React.FC<ProfileSwitcherModalProps> = ({
               <div
                 key={p.id}
                 onClick={() => {
+                  HapticService.selection();
                   onSelectProfile(p.id);
                   onClose();
                 }}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 active:scale-[0.99] ${
                   isSelected
                     ? "bg-indigo-50/80 dark:bg-indigo-950/70 border-indigo-500 dark:border-indigo-700 shadow-xs"
                     : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300"
@@ -90,7 +95,7 @@ export const ProfileSwitcherModal: React.FC<ProfileSwitcherModalProps> = ({
                       {p.name}
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Max Marks: {p.totalMarks} • Penalty: -{p.negativeMarkingRatio}
+                      Target: <span className="font-extrabold text-blue-600 dark:text-blue-400">{p.targetScore || Math.round(p.totalMarks * 0.8)}</span> / {p.totalMarks} Marks • Penalty: -{p.negativeMarkingRatio}
                     </p>
                   </div>
                 </div>
@@ -107,6 +112,7 @@ export const ProfileSwitcherModal: React.FC<ProfileSwitcherModalProps> = ({
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <button
             onClick={() => {
+              HapticService.lightTap();
               onClose();
               onOpenAddModal();
             }}
@@ -118,6 +124,7 @@ export const ProfileSwitcherModal: React.FC<ProfileSwitcherModalProps> = ({
 
           <button
             onClick={() => {
+              HapticService.lightTap();
               onClose();
               onOpenSetDateModal();
             }}
@@ -131,3 +138,4 @@ export const ProfileSwitcherModal: React.FC<ProfileSwitcherModalProps> = ({
     </div>
   );
 };
+

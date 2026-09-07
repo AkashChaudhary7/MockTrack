@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ExamProfile } from "../types";
 import { motion } from "motion/react";
 import { X, Plus, Sparkles } from "lucide-react";
+import { HapticService } from "../services/HapticService";
 
 interface AddProfileModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({
   const [name, setName] = useState<string>("");
   const [shortCode, setShortCode] = useState<string>("");
   const [totalMarks, setTotalMarks] = useState<number>(200);
+  const [targetScore, setTargetScore] = useState<number>(160);
   const [duration, setDuration] = useState<number>(60);
   const [penaltyRatio, setPenaltyRatio] = useState<number>(0.5);
   const [examDate, setExamDate] = useState<string>("");
@@ -27,6 +29,7 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({
     e.preventDefault();
     if (!name.trim()) return;
 
+    HapticService.success();
     const newId = `profile-${Date.now()}`;
     const code = shortCode.trim() || name.split(" ")[0];
 
@@ -35,6 +38,7 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({
       name: name.trim(),
       shortCode: code,
       totalMarks: Number(totalMarks),
+      targetScore: targetScore ? Number(targetScore) : undefined,
       defaultDurationMinutes: Number(duration),
       examDate: examDate || undefined,
       negativeMarkingRatio: Number(penaltyRatio),
@@ -125,20 +129,33 @@ export const AddProfileModal: React.FC<AddProfileModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
-                Neg Marking Penalty
+                Target Score (Goal)
               </label>
-              <select
-                value={penaltyRatio}
-                onChange={(e) => setPenaltyRatio(parseFloat(e.target.value))}
+              <input
+                type="number"
+                placeholder="e.g. 160"
+                value={targetScore}
+                onChange={(e) => setTargetScore(parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border font-bold text-xs"
-              >
-                <option value={0.5}>-0.5 Marks (SSC Tier 1)</option>
-                <option value={0.25}>-0.25 Marks (IBPS Bank PO)</option>
-                <option value={0.33}>-0.33 Marks (1/3rd Penalty)</option>
-                <option value={0.66}>-0.66 Marks (UPSC GS-1)</option>
-                <option value={0}>0 (No Negative Penalty)</option>
-              </select>
+              />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">
+              Neg Marking Penalty
+            </label>
+            <select
+              value={penaltyRatio}
+              onChange={(e) => setPenaltyRatio(parseFloat(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border font-bold text-xs"
+            >
+              <option value={0.5}>-0.5 Marks (SSC Tier 1)</option>
+              <option value={0.25}>-0.25 Marks (IBPS Bank PO)</option>
+              <option value={0.33}>-0.33 Marks (1/3rd Penalty)</option>
+              <option value={0.66}>-0.66 Marks (UPSC GS-1)</option>
+              <option value={0}>0 (No Negative Penalty)</option>
+            </select>
           </div>
 
           <div>

@@ -1,20 +1,110 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="mocktrackGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4F46E5" />
-      <stop offset="50%" stop-color="#6366F1" />
-      <stop offset="100%" stop-color="#2563EB" />
+    <filter id="pwaShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" floodColor="#0F172A" floodOpacity="0.2" />
+    </filter>
+
+    <linearGradient id="pwaBoard" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#1E3A8A" />
+      <stop offset="60%" stopColor="#172554" />
+      <stop offset="100%" stopColor="#0F172A" />
     </linearGradient>
-    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38BDF8" />
-      <stop offset="100%" stop-color="#818CF8" />
+
+    <linearGradient id="pwaGoldClip" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#FDE047" />
+      <stop offset="40%" stopColor="#F59E0B" />
+      <stop offset="100%" stopColor="#D97706" />
+    </linearGradient>
+
+    <linearGradient id="pwaBlueBar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#38BDF8" />
+      <stop offset="100%" stopColor="#0284C7" />
+    </linearGradient>
+
+    <linearGradient id="pwaTealBar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#2DD4BF" />
+      <stop offset="100%" stopColor="#0D9488" />
+    </linearGradient>
+
+    <linearGradient id="pwaGoldBar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#FBBF24" />
+      <stop offset="100%" stopColor="#D97706" />
+    </linearGradient>
+
+    <linearGradient id="pwaGreenArrow" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stopColor="#10B981" />
+      <stop offset="60%" stopColor="#22C55E" />
+      <stop offset="100%" stopColor="#34D399" />
+    </linearGradient>
+
+    <linearGradient id="pwaStopwatch" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#1E3A8A" />
+      <stop offset="100%" stopColor="#0F172A" />
+    </linearGradient>
+
+    <linearGradient id="pwaBtnB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#34D399" />
+      <stop offset="100%" stopColor="#10B981" />
     </linearGradient>
   </defs>
-  <rect x="4" y="4" width="92" height="92" rx="24" fill="url(#mocktrackGrad)" />
-  <circle cx="50" cy="50" r="34" stroke="white" stroke-width="3.5" stroke-opacity="0.25" fill="none" />
-  <circle cx="50" cy="50" r="24" stroke="white" stroke-width="4" stroke-opacity="0.45" fill="none" />
-  <path d="M 26 66 L 42 50 L 56 58 L 74 34" stroke="url(#accentGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M 62 34 H 74 V 46" stroke="url(#accentGrad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-  <circle cx="74" cy="34" r="8" fill="#10B981" stroke="white" stroke-width="2.5" />
-  <path d="M 70 34 L 73 37 L 78 31" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Upward Growth Arrow -->
+  <path
+    d="M 72 74 C 76 56 86 38 108 26 L 103 21 L 124 20 L 121 41 L 115 35 C 96 46 88 62 84 76 Z"
+    fill="url(#pwaGreenArrow)"
+    filter="url(#pwaShadow)"
+  />
+
+  <!-- Ascending Bar Chart -->
+  <rect x="78" y="58" width="12" height="34" rx="3.5" fill="url(#pwaBlueBar)" filter="url(#pwaShadow)" />
+  <rect x="94" y="44" width="12" height="48" rx="3.5" fill="url(#pwaTealBar)" filter="url(#pwaShadow)" />
+  <rect x="110" y="32" width="13" height="60" rx="3.5" fill="url(#pwaGoldBar)" filter="url(#pwaShadow)" />
+
+  <!-- Exam Clipboard -->
+  <rect x="16" y="18" width="68" height="88" rx="12" fill="url(#pwaBoard)" filter="url(#pwaShadow)" />
+  <rect x="22" y="24" width="56" height="76" rx="7" fill="#FFFFFF" />
+
+  <!-- Gold Clip -->
+  <path
+    d="M 36 12 L 64 12 C 67 12 69 14 69 17 L 69 22 C 69 24 67 26 64 26 L 36 26 C 33 26 31 24 31 22 L 31 17 C 31 14 33 12 36 12 Z"
+    fill="url(#pwaGoldClip)"
+    filter="url(#pwaShadow)"
+  />
+  <circle cx="50" cy="18" r="3.2" fill="#FFFFFF" />
+
+  <!-- Option A -->
+  <circle cx="33" cy="38" r="5" stroke="#CBD5E1" stroke-width="1.6" fill="#F8FAFC" />
+  <text x="33" y="41.2" text-anchor="middle" font-size="6.5" font-weight="800" fill="#64748B" font-family="sans-serif">A</text>
+  <rect x="42" y="36.5" width="28" height="3" rx="1.5" fill="#E2E8F0" />
+
+  <!-- Option B Checkmark -->
+  <circle cx="33" cy="53" r="6.2" fill="url(#pwaBtnB)" />
+  <text x="33" y="56.2" text-anchor="middle" font-size="7.5" font-weight="900" fill="#FFFFFF" font-family="sans-serif">B</text>
+  <path d="M 43 53.5 L 46.5 57 L 53 49" stroke="#10B981" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
+  <rect x="58" y="51.5" width="14" height="3" rx="1.5" fill="#CBD5E1" />
+
+  <!-- Option C -->
+  <circle cx="33" cy="68" r="5" stroke="#CBD5E1" stroke-width="1.6" fill="#F8FAFC" />
+  <text x="33" y="71.2" text-anchor="middle" font-size="6.5" font-weight="800" fill="#64748B" font-family="sans-serif">C</text>
+  <rect x="42" y="66.5" width="26" height="3" rx="1.5" fill="#E2E8F0" />
+
+  <!-- Option D -->
+  <circle cx="33" cy="83" r="5" stroke="#CBD5E1" stroke-width="1.6" fill="#F8FAFC" />
+  <text x="33" y="86.2" text-anchor="middle" font-size="6.5" font-weight="800" fill="#64748B" font-family="sans-serif">D</text>
+  <rect x="42" y="81.5" width="24" height="3" rx="1.5" fill="#E2E8F0" />
+
+  <!-- Stopwatch / Timer -->
+  <rect x="91" y="60" width="8" height="6" rx="2" fill="url(#pwaStopwatch)" />
+  <rect x="88" y="58" width="14" height="3.5" rx="1.5" fill="#D97706" />
+  <circle cx="95" cy="85" r="23" fill="url(#pwaStopwatch)" filter="url(#pwaShadow)" />
+  <circle cx="95" cy="85" r="19" fill="#FFFFFF" />
+
+  <!-- Clock Ticks & Hands -->
+  <line x1="95" y1="69" x2="95" y2="72" stroke="#64748B" stroke-width="1.8" stroke-linecap="round" />
+  <line x1="95" y1="98" x2="95" y2="101" stroke="#64748B" stroke-width="1.8" stroke-linecap="round" />
+  <line x1="79" y1="85" x2="82" y2="85" stroke="#64748B" stroke-width="1.8" stroke-linecap="round" />
+  <line x1="108" y1="85" x2="111" y2="85" stroke="#64748B" stroke-width="1.8" stroke-linecap="round" />
+  <line x1="95" y1="85" x2="107" y2="74" stroke="#1E3A8A" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="95" y1="85" x2="101" y2="92" stroke="#0F172A" stroke-width="3" stroke-linecap="round" />
+  <circle cx="95" cy="85" r="2.8" fill="#F59E0B" />
 </svg>

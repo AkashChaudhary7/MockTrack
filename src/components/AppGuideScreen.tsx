@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { CandidateProfile, ExamProfile, MockAttempt } from "../types";
 import { PLATFORMS } from "../data/platforms";
 import { generateBilingualReportHTML } from "../utils/pdfExport";
+import { PlatformLogo } from "./PlatformLogo";
+import { AppLogo } from "./AppLogo";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Target,
@@ -269,14 +271,11 @@ export const AppGuideScreen: React.FC<AppGuideScreenProps> = ({
           {Object.values(PLATFORMS).map((p) => (
             <div
               key={p.id}
-              className={`p-3 rounded-2xl border ${p.bgClass} ${p.borderClass} space-y-1`}
+              className={`p-3 rounded-2xl border ${p.bgClass} ${p.borderClass} space-y-2`}
             >
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{ backgroundColor: p.brandColor }}
-                />
-                <h4 className={`font-black text-xs ${p.textClass}`}>{p.name}</h4>
+              <div className="flex items-center gap-2">
+                <PlatformLogo platformId={p.id} size="sm" />
+                <h4 className={`font-black text-xs ${p.textClass} truncate`}>{p.name}</h4>
               </div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
                 {p.description}
@@ -288,8 +287,15 @@ export const AppGuideScreen: React.FC<AppGuideScreenProps> = ({
 
       {/* D. Developer Info & Feedback */}
       <div className="bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 text-center space-y-2 text-xs">
+        <div className="flex items-center justify-center gap-2">
+          <AppLogo size="sm" />
+          <div className="flex items-center font-black text-sm tracking-tight select-none">
+            <span className="text-[#0B2545] dark:text-white">Mock</span>
+            <span className="text-[#00A86B] dark:text-[#10B981]">Track</span>
+          </div>
+        </div>
         <p className="font-bold text-slate-800 dark:text-slate-200">
-          MockTrack Master UI • Built for Indian Exam Aspirants
+          Master UI &bull; Built for Indian Exam Aspirants
         </p>
         <p className="text-slate-500 dark:text-slate-400">
           Version 1.4.0 • Contact Developer:{" "}

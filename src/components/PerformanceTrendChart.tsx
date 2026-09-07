@@ -1,8 +1,8 @@
 import React from "react";
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -11,15 +11,16 @@ import {
 } from "recharts";
 import { MockAttempt } from "../types";
 import { PlatformLogo } from "./PlatformLogo";
-import { TrendingUp, Target, Award } from "lucide-react";
+import { TrendingUp, Target, Award, ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 interface PerformanceTrendChartProps {
   attempts: MockAttempt[];
   baselineScore: number;
   totalMarks: number;
+  targetScore?: number;
 }
 
-// Custom 3D-styled Recharts Tooltip
+// Custom Recharts Tooltip
 const CustomTooltip = ({ active, payload, baselineScore }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -27,7 +28,7 @@ const CustomTooltip = ({ active, payload, baselineScore }: any) => {
     const isAboveBaseline = diff >= 0;
 
     return (
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl text-xs space-y-2 card-bevel-3d max-w-xs">
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl text-xs space-y-2 max-w-xs">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-2">
           <div className="flex items-center gap-2 truncate">
             <PlatformLogo platformId={data.platform} size="xs" />
@@ -42,7 +43,7 @@ const CustomTooltip = ({ active, payload, baselineScore }: any) => {
 
         <div className="flex items-baseline justify-between gap-4">
           <span className="text-slate-500 dark:text-slate-400 font-medium">Score Logged:</span>
-          <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+          <span className="text-sm font-black text-blue-600 dark:text-blue-400">
             {data.score} <span className="text-[10px] text-slate-400">/ {data.maxMarks}</span>
           </span>
         </div>
@@ -50,7 +51,16 @@ const CustomTooltip = ({ active, payload, baselineScore }: any) => {
         {data.accuracy !== undefined && data.accuracy > 0 && (
           <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-300 font-medium">
             <span>Accuracy:</span>
-            <span className="font-bold text-slate-900 dark:text-slate-100">{data.accuracy}%</span>
+            <span className="font-bold text-emerald-600 dark:text-emerald-400">{data.accuracy}%</span>
+          </div>
+        )}
+
+        {data.deltaFromPrev !== null && data.deltaFromPrev !== undefined && (
+          <div className="flex items-center justify-between text-[11px] font-bold">
+            <span className="text-slate-400">vs Previous:</span>
+            <span className={data.deltaFromPrev >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+              {data.deltaFromPrev >= 0 ? `+${data.deltaFromPrev}` : `${data.deltaFromPrev}`} marks
+            </span>
           </div>
         )}
 
@@ -70,34 +80,38 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
   attempts,
   baselineScore,
   totalMarks,
+  targetScore,
 }) => {
-  // Sort attempts chronologically (oldest to newest) and take recent 7
+  // Sort attempts chronologically (oldest to newest) and take the last 10 attempts
   const sorted = [...attempts]
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-7);
+    .slice(-10);
 
   if (sorted.length === 0) {
     return (
-      <div className="rounded-3xl p-6 text-center card-bevel-3d space-y-2">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold mx-auto btn-3d-secondary">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 text-center space-y-2">
+        <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold mx-auto">
           📈
         </div>
         <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">
           No Mock Tests Logged Yet
         </h4>
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto">
-          Log your first mock test to unlock interactive performance trend analytics and baseline tracking.
+          Log mock tests to visualize your score progression line chart across your last 10 attempts.
         </p>
       </div>
     );
   }
 
-  // Format data points for Recharts
+  // Format data points for Recharts LineChart
   const chartData = sorted.map((att, index) => {
     const dObj = new Date(att.date + "T00:00:00");
     const monthShort = dObj.toLocaleDateString("en-US", { month: "short" });
     const day = dObj.getDate();
     const dateLabel = `${day} ${monthShort}`;
+
+    const prevScore = index > 0 ? sorted[index - 1].score : null;
+    const deltaFromPrev = prevScore !== null ? Number((att.score - prevScore).toFixed(1)) : null;
 
     return {
       id: att.id,
@@ -108,39 +122,53 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
       platform: att.platform,
       accuracy: att.accuracy,
       dateLabel,
-      shortLabel: `#${index + 1} (${day} ${monthShort})`,
+      shortLabel: `M${index + 1}`,
+      deltaFromPrev,
     };
   });
 
-  // Dynamic Y-Axis Domain calculation
+  // Calculate statistics over the 10-attempt window
   const scores = sorted.map((a) => a.score);
-  const minScore = Math.max(0, Math.floor(Math.min(...scores, baselineScore) - 10));
-  const maxScore = Math.min(totalMarks, Math.ceil(Math.max(...scores, baselineScore) + 10));
+  const tenMockAvg = Number((scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1));
+  const tenMockPeak = Math.max(...scores);
+  const firstInWindow = scores[0];
+  const lastInWindow = scores[scores.length - 1];
+  const windowDelta = Number((lastInWindow - firstInWindow).toFixed(1));
 
-  // Compute latest trend trajectory
-  const latestScore = sorted[sorted.length - 1].score;
-  const isAboveBaseline = latestScore >= baselineScore;
+  // Dynamic Y-Axis Domain calculation
+  const referenceTarget = targetScore || baselineScore;
+  const minScore = Math.max(0, Math.floor(Math.min(...scores, referenceTarget) - 10));
+  const maxScore = Math.min(totalMarks, Math.ceil(Math.max(...scores, referenceTarget) + 10));
+
+  const isAboveBaseline = lastInWindow >= baselineScore;
 
   return (
-    <div className="rounded-3xl p-4 sm:p-5 card-bevel-3d space-y-4">
+    <div className="card-luminous rounded-3xl p-4 sm:p-5 space-y-4">
       {/* Header Info */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
         <div>
-          <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-indigo-500" />
-            <span>7-Attempt Performance Trend</span>
+          <h3 className="text-sm sm:text-base font-black font-display text-slate-900 dark:text-white flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>Score Progression (Last {sorted.length} Mocks)</span>
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium flex items-center gap-1.5">
-            <span>Target Baseline:</span>
-            <strong className="text-indigo-600 dark:text-indigo-400 font-black">
-              {baselineScore} Marks
-            </strong>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium flex items-center gap-2">
+            <span>Avg: <strong className="text-indigo-600 dark:text-indigo-400 font-black font-display">{tenMockAvg}</strong></span>
+            <span>•</span>
+            <span>Peak: <strong className="text-emerald-600 dark:text-emerald-400 font-black font-display">{tenMockPeak}</strong></span>
+            <span>•</span>
+            <span className="flex items-center gap-0.5">
+              Net Gain:
+              <strong className={`font-black flex items-center font-display ${windowDelta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                {windowDelta >= 0 ? <ArrowUpRight className="w-3.5 h-3.5 inline" /> : <ArrowDownRight className="w-3.5 h-3.5 inline" />}
+                {windowDelta >= 0 ? `+${windowDelta}` : windowDelta}
+              </strong>
+            </span>
           </p>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-bold">
-          <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 font-extrabold">
-            Last {sorted.length} Mocks
+          <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-extrabold font-display">
+            {sorted.length}/10 Plotted
           </span>
           <span
             className={`px-2.5 py-1 rounded-full border text-[11px] font-black ${
@@ -154,26 +182,19 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
         </div>
       </div>
 
-      {/* Recharts Area Chart Container */}
+      {/* Recharts LineChart Container */}
       <div className="w-full h-56 sm:h-64 select-none pt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
+          <LineChart
             data={chartData}
             margin={{ top: 12, right: 12, left: -18, bottom: 0 }}
           >
-            <defs>
-              <linearGradient id="performance3DGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
-              </linearGradient>
-            </defs>
-
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" className="dark:stroke-slate-800 opacity-60" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="dark:stroke-slate-800/80 opacity-50" />
 
             <XAxis
               dataKey="shortLabel"
               stroke="#94a3b8"
-              fontSize={10}
+              fontSize={11}
               fontWeight={700}
               tickLine={false}
               axisLine={false}
@@ -183,7 +204,7 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
             <YAxis
               domain={[minScore, maxScore]}
               stroke="#94a3b8"
-              fontSize={10}
+              fontSize={11}
               fontWeight={700}
               tickLine={false}
               axisLine={false}
@@ -192,14 +213,14 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
 
             <Tooltip content={<CustomTooltip baselineScore={baselineScore} />} />
 
-            {/* Baseline Target Reference Line */}
+            {/* Baseline Reference Line */}
             <ReferenceLine
               y={baselineScore}
               stroke="#6366f1"
               strokeDasharray="4 4"
-              strokeWidth={2}
+              strokeWidth={1.5}
               label={{
-                value: `Baseline (${baselineScore})`,
+                value: `Baseline ${baselineScore}`,
                 fill: "#6366f1",
                 fontSize: 10,
                 fontWeight: 800,
@@ -207,14 +228,13 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
               }}
             />
 
-            {/* Score Area Line */}
-            <Area
+            {/* Score Progression Line */}
+            <Line
               type="monotone"
               dataKey="score"
+              name="Mock Score"
               stroke="#4f46e5"
-              strokeWidth={3}
-              fillOpacity={1}
-              fill="url(#performance3DGrad)"
+              strokeWidth={3.5}
               activeDot={{
                 r: 7,
                 fill: "#6366f1",
@@ -229,25 +249,25 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
                 strokeWidth: 2,
               }}
             />
-          </AreaChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Legend & Recent Attempt Chips */}
+      {/* Legend & Recent Attempt Stats */}
       <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
-            Logged Score
+          <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+            Mock Score
           </span>
           <span className="flex items-center gap-1.5 text-indigo-500">
             <span className="w-3 border-t-2 border-dashed border-indigo-500" />
-            Target Baseline
+            Baseline Target
           </span>
         </div>
 
         <div className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-          Latest: <span className="text-indigo-600 dark:text-indigo-400">{latestScore} Marks</span>
+          Latest Score: <span className="text-blue-600 dark:text-blue-400">{lastInWindow} Marks</span>
         </div>
       </div>
     </div>

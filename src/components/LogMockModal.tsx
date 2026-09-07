@@ -29,6 +29,7 @@ import {
 import { useTranslation } from "../i18n/LanguageContext";
 import { AppLogo } from "./AppLogo";
 import { PlatformLogo } from "./PlatformLogo";
+import { HapticService } from "../services/HapticService";
 
 interface SubjectRowState {
   id: string;
@@ -52,6 +53,179 @@ interface LogMockModalProps {
   onOpenOcrModal?: (tab: "image" | "link") => void;
   frequentlyUsedWeakAreas?: string[];
   onSaveWeakAreasHistory?: (areas: string[]) => void;
+}
+
+export interface SubjectPatternSuggestion {
+  name: string;
+  aliases: string[];
+  examCategory?: string[];
+  defaultMarks?: number;
+}
+
+export const COMMON_EXAM_SUBJECT_PATTERNS: SubjectPatternSuggestion[] = [
+  // Quant / Maths
+  {
+    name: "Quantitative Aptitude",
+    aliases: ["quant", "math", "maths", "mathematics", "numerical", "arithmetic", "advance math", "qa", "quants"],
+    examCategory: ["SSC", "Banking", "Railways", "UPSC", "State PSC"],
+  },
+  {
+    name: "Mathematics",
+    aliases: ["math", "maths", "calculus", "algebra", "trigonometry", "coordinate", "jee maths"],
+    examCategory: ["JEE Main", "JEE Advanced", "NDA", "CDS", "Defence"],
+  },
+  {
+    name: "Data Interpretation & Analysis",
+    aliases: ["di", "data interpretation", "d.i.", "charts", "graphs", "analytical di"],
+    examCategory: ["Banking", "CAT", "SBI PO", "IBPS PO"],
+  },
+
+  // Reasoning
+  {
+    name: "Reasoning Ability",
+    aliases: ["reasoning", "logical", "lr", "reason", "mental ability", "puzzles", "seating"],
+    examCategory: ["Banking", "SSC", "Railways", "Insurance"],
+  },
+  {
+    name: "General Intelligence & Reasoning",
+    aliases: ["gi", "intelligence", "non verbal", "analogy", "series", "general intelligence"],
+    examCategory: ["SSC CGL", "SSC CHSL", "RRB NTPC"],
+  },
+  {
+    name: "Logical Reasoning & Analytical Ability",
+    aliases: ["logical reasoning", "critical reasoning", "analytical", "csat reasoning"],
+    examCategory: ["UPSC", "State PSC", "CAT"],
+  },
+
+  // English
+  {
+    name: "English Comprehension",
+    aliases: ["english", "eng", "comprehension", "reading comp", "rc", "vocab", "grammar"],
+    examCategory: ["SSC", "Railways", "Defence"],
+  },
+  {
+    name: "English Language",
+    aliases: ["english", "eng", "verbal", "verbal ability", "va", "cloze test", "error detection"],
+    examCategory: ["Banking", "IBPS", "SBI"],
+  },
+
+  // General Awareness / GK
+  {
+    name: "General Awareness & Current Affairs",
+    aliases: ["ga", "gk", "general knowledge", "current affairs", "ca", "general awareness", "static gk"],
+    examCategory: ["SSC", "Banking", "Railways", "Defence"],
+  },
+  {
+    name: "General Studies (GS)",
+    aliases: ["gs", "general studies", "history", "polity", "geography", "economy", "gk"],
+    examCategory: ["UPSC", "State PSC", "SSC CGL Tier 2", "CDS", "NDA"],
+  },
+  {
+    name: "Banking & Financial Awareness",
+    aliases: ["banking awareness", "financial awareness", "economy", "rbi", "monetary policy", "fin"],
+    examCategory: ["Banking", "SBI", "IBPS", "RBI"],
+  },
+
+  // Science / Medical / Engineering
+  {
+    name: "Physics",
+    aliases: ["phy", "physics", "mechanics", "optics", "thermodynamics", "electromagnetism"],
+    examCategory: ["NEET UG", "JEE Main", "NDA", "Science"],
+  },
+  {
+    name: "Chemistry",
+    aliases: ["chem", "chemistry", "organic", "inorganic", "physical chem"],
+    examCategory: ["NEET UG", "JEE Main", "NDA", "Science"],
+  },
+  {
+    name: "Biology (Botany & Zoology)",
+    aliases: ["bio", "biology", "botany", "zoology", "genetics", "human physiology"],
+    examCategory: ["NEET UG", "Medical", "Nursing"],
+  },
+
+  // Teaching / Education
+  {
+    name: "Child Development & Pedagogy (CDP)",
+    aliases: ["cdp", "pedagogy", "child development", "psychology", "teaching aptitude"],
+    examCategory: ["CTET", "DSSSB", "KVS", "State TET"],
+  },
+  {
+    name: "Teaching Aptitude & Methodology",
+    aliases: ["teaching", "teaching methodology", "education", "classroom"],
+    examCategory: ["UGC NET", "B.Ed", "DSSSB"],
+  },
+
+  // Computer / IT
+  {
+    name: "Computer Knowledge & Aptitude",
+    aliases: ["computer", "it", "cs", "computer awareness", "ms office", "networking"],
+    examCategory: ["SSC CGL", "Banking", "RRB", "State Exams"],
+  },
+
+  // Hindi / Regional
+  {
+    name: "Hindi Language & Grammar",
+    aliases: ["hindi", "samanya hindi", "varnamala", "sandhi", "samast"],
+    examCategory: ["UP Police", "State PSC", "DSSSB", "CTET", "SSC GD"],
+  },
+];
+
+/**
+ * Suggests matching subject names based on user input and optional exam pattern
+ */
+export function suggestSubjectNames(input: string, examName?: string): string[] {
+  if (!input || !input.trim()) {
+    if (examName) {
+      const examLower = examName.toLowerCase();
+      const examMatches = COMMON_EXAM_SUBJECT_PATTERNS.filter((p) =>
+        p.examCategory?.some((cat) => examLower.includes(cat.toLowerCase()))
+      ).map((p) => p.name);
+      if (examMatches.length > 0) return examMatches.slice(0, 5);
+    }
+    return [
+      "Quantitative Aptitude",
+      "Reasoning Ability",
+      "English Comprehension",
+      "General Awareness & Current Affairs",
+      "Computer Knowledge & Aptitude",
+    ];
+  }
+
+  const query = input.trim().toLowerCase();
+
+  const scored = COMMON_EXAM_SUBJECT_PATTERNS.map((item) => {
+    const nameLower = item.name.toLowerCase();
+    let score = 0;
+
+    if (nameLower === query) score += 100;
+    else if (nameLower.startsWith(query)) score += 50;
+    else if (nameLower.includes(query)) score += 30;
+
+    for (const alias of item.aliases) {
+      const aliasLower = alias.toLowerCase();
+      if (aliasLower === query) {
+        score += 60;
+        break;
+      } else if (aliasLower.startsWith(query)) {
+        score += 40;
+        break;
+      } else if (aliasLower.includes(query)) {
+        score += 20;
+        break;
+      }
+    }
+
+    if (examName && item.examCategory?.some((c) => examName.toLowerCase().includes(c.toLowerCase()))) {
+      score += 15;
+    }
+
+    return { name: item.name, score };
+  })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const uniqueNames = Array.from(new Set(scored.map((s) => s.name)));
+  return uniqueNames.slice(0, 5);
 }
 
 const getDefaultSubjectsForExam = (exam: ExamProfile): SubjectRowState[] => {
@@ -183,6 +357,7 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
 
   // Subject-wise Rows State
   const [subjectRows, setSubjectRows] = useState<SubjectRowState[]>(getDefaultSubjectsForExam(activeExam));
+  const [focusedSubjectRowId, setFocusedSubjectRowId] = useState<string | null>(null);
 
   // Scan & Link States
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -471,6 +646,8 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
     };
 
     onSaveMock(newAttempt);
+    triggerHaptic([30, 50, 30, 50, 70]);
+    HapticService.achievement();
     setLastSavedScore({ score: newAttempt.score, total: newAttempt.maxMarks, diff });
     setIsPostSaved(true);
 
@@ -1026,68 +1203,102 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
                       </div>
 
                       <div className="space-y-1.5">
-                        {subjectRows.map((r) => (
-                          <div
-                            key={r.id}
-                            className={`p-2 rounded-xl border transition-all space-y-1 ${
-                              r.isWeak
-                                ? "bg-amber-50/60 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800"
-                                : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                value={r.name}
-                                onChange={(e) => updateSubjectRow(r.id, "name", e.target.value)}
-                                className="flex-1 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-extrabold text-slate-900 dark:text-slate-100"
-                              />
+                        {subjectRows.map((r) => {
+                          const suggestions = suggestSubjectNames(r.name, selectedExamName || activeExam.name)
+                            .filter((s) => s.toLowerCase() !== r.name.trim().toLowerCase());
+                          const isFocused = focusedSubjectRowId === r.id;
 
-                              <div className="flex items-center gap-1">
+                          return (
+                            <div
+                              key={r.id}
+                              className={`p-2 rounded-xl border transition-all space-y-1.5 ${
+                                r.isWeak
+                                  ? "bg-amber-50/60 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800"
+                                  : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
                                 <input
-                                  type="number"
-                                  step="0.5"
-                                  placeholder="0"
-                                  value={r.score}
-                                  onChange={(e) => updateSubjectRow(r.id, "score", e.target.value)}
-                                  className="w-14 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-black text-indigo-600 dark:text-indigo-400 text-center"
+                                  type="text"
+                                  placeholder="Subject / Section name"
+                                  value={r.name}
+                                  onFocus={() => setFocusedSubjectRowId(r.id)}
+                                  onChange={(e) => {
+                                    setFocusedSubjectRowId(r.id);
+                                    updateSubjectRow(r.id, "name", e.target.value);
+                                  }}
+                                  className="flex-1 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-extrabold text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
                                 />
-                                <span className="text-xs text-slate-400 font-bold">/</span>
-                                <input
-                                  type="number"
-                                  value={r.maxMarks}
-                                  onChange={(e) => updateSubjectRow(r.id, "maxMarks", e.target.value)}
-                                  className="w-10 px-1.5 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 text-center"
-                                />
-                              </div>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  triggerHaptic(10);
-                                  updateSubjectRow(r.id, "isWeak", !r.isWeak);
-                                }}
-                                className={`px-2 py-1 rounded text-[10px] font-black cursor-pointer transition-all ${
-                                  r.isWeak
-                                    ? "bg-amber-500 text-slate-950 shadow-xs"
-                                    : "bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-900"
-                                }`}
-                              >
-                                {r.isWeak ? "Weak ✓" : "Weak"}
-                              </button>
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    placeholder="0"
+                                    value={r.score}
+                                    onChange={(e) => updateSubjectRow(r.id, "score", e.target.value)}
+                                    className="w-14 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-black text-indigo-600 dark:text-indigo-400 text-center"
+                                  />
+                                  <span className="text-xs text-slate-400 font-bold">/</span>
+                                  <input
+                                    type="number"
+                                    value={r.maxMarks}
+                                    onChange={(e) => updateSubjectRow(r.id, "maxMarks", e.target.value)}
+                                    className="w-10 px-1.5 py-1 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 text-center"
+                                  />
+                                </div>
 
-                              {subjectRows.length > 1 && (
                                 <button
                                   type="button"
-                                  onClick={() => removeSubjectRow(r.id)}
-                                  className="text-slate-400 hover:text-rose-500 cursor-pointer p-1"
+                                  onClick={() => {
+                                    triggerHaptic(10);
+                                    updateSubjectRow(r.id, "isWeak", !r.isWeak);
+                                  }}
+                                  className={`px-2 py-1 rounded text-[10px] font-black cursor-pointer transition-all ${
+                                    r.isWeak
+                                      ? "bg-amber-500 text-slate-950 shadow-xs"
+                                      : "bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-900"
+                                  }`}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  {r.isWeak ? "Weak ✓" : "Weak"}
                                 </button>
+
+                                {subjectRows.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSubjectRow(r.id)}
+                                    className="text-slate-400 hover:text-rose-500 cursor-pointer p-1"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Smart Subject Suggestion Chips */}
+                              {isFocused && suggestions.length > 0 && (
+                                <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-0.5">
+                                    <Sparkles className="w-2.5 h-2.5 text-amber-500 inline" /> Suggestions:
+                                  </span>
+                                  {suggestions.slice(0, 4).map((sug) => (
+                                    <button
+                                      key={sug}
+                                      type="button"
+                                      onClick={() => {
+                                        triggerHaptic(10);
+                                        updateSubjectRow(r.id, "name", sug);
+                                        setFocusedSubjectRowId(null);
+                                      }}
+                                      className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/80 text-[10px] font-extrabold rounded-lg transition-colors cursor-pointer"
+                                    >
+                                      + {sug}
+                                    </button>
+                                  ))}
+                                </div>
                               )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       <button
@@ -1280,17 +1491,17 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Quick Notes */}
+                        {/* Notes & Reflections */}
                         <div>
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-0.5">
-                            Quick Note
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">
+                            Notes &amp; Reflections (Takeaways)
                           </label>
-                          <input
-                            type="text"
-                            placeholder="What should you remember from this mock?"
+                          <textarea
+                            rows={2}
+                            placeholder="Jot down specific takeaways: e.g. Silly mistakes in geometry, solved reading comprehension faster, revise modern history..."
                             value={quickNote}
                             onChange={(e) => setQuickNote(e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
                       </div>

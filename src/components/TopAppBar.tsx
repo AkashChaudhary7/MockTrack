@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ExamProfile, CandidateProfile, NavTab } from "../types";
+import { ExamProfile, CandidateProfile, NavTab, ThemeMode } from "../types";
 import { calculateDaysLeft } from "../utils/analytics";
 import {
   Calendar,
@@ -13,6 +13,8 @@ import {
   LineChart,
   Settings,
   ShieldCheck,
+  User,
+  Monitor,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { HapticService } from "../services/HapticService";
@@ -21,7 +23,7 @@ import { AppLogo } from "./AppLogo";
 interface TopAppBarProps {
   activeExam: ExamProfile;
   candidate: CandidateProfile;
-  theme: "light" | "dark";
+  theme: ThemeMode;
   activeTab: NavTab;
   onToggleTheme: () => void;
   onOpenProfileSwitcher: () => void;
@@ -43,6 +45,12 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
   const [showDrawer, setShowDrawer] = useState(false);
   const daysLeft = calculateDaysLeft(activeExam.examDate);
 
+  const isEffectiveDark =
+    theme === "dark" ||
+    (theme === "system" &&
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+
   const isMainPage = activeTab === "dashboard";
 
   const handleOpenDrawer = () => {
@@ -58,68 +66,66 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors shadow-2xs">
-        <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-2">
-          {/* LEFT: Three-Dot Menu Button / Back button */}
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white/90 dark:bg-[#090D16]/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 transition-colors shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2">
+          {/* LEFT: Menu Drawer Button */}
           <div className="flex items-center gap-2">
-            {isMainPage ? (
-              <button
-                onClick={handleOpenDrawer}
-                className="p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Open Menu"
-              >
-                <Menu className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            ) : (
-              <button
-                onClick={() => handleNav("dashboard")}
-                className="flex items-center gap-1 p-1.5 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer text-xs font-extrabold"
-              >
-                <span className="text-base font-black">←</span>
-                <span>{t.appName}</span>
-              </button>
-            )}
+            <button
+              onClick={handleOpenDrawer}
+              className="w-10 h-10 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition-colors cursor-pointer flex items-center justify-center active:scale-95"
+              title="Open Menu"
+              aria-label="Open Navigation Menu"
+            >
+              <Menu className="w-5 h-5 stroke-[2.2]" />
+            </button>
           </div>
 
           {/* CENTER: MockTrack Branding with AppLogo */}
           <button
             onClick={() => handleNav("dashboard")}
-            className="flex items-center gap-2 font-black text-lg text-indigo-600 dark:text-indigo-400 tracking-tight cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer group active:scale-98 transition-transform"
           >
             <AppLogo size="sm" />
-            <span>MockTrack</span>
+            <div className="flex items-center font-black text-lg tracking-tight select-none font-display">
+              <span className="text-[#0B2545] dark:text-white">Mock</span>
+              <span className="text-[#00A86B] dark:text-[#10B981]">Track</span>
+            </div>
           </button>
 
           {/* RIGHT: Theme Toggle & Exam Day Countdown Pill */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
                 HapticService.lightTap();
                 onOpenSetDateModal();
               }}
-              className="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-extrabold border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 bg-indigo-50/90 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-black border border-indigo-200/80 dark:border-indigo-800 transition-all cursor-pointer whitespace-nowrap font-display tabular-nums"
             >
               <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               {daysLeft !== null ? (
-                <span>🎯 {daysLeft} Days</span>
+                <span>{daysLeft} Days</span>
               ) : (
                 <span>Date</span>
               )}
             </button>
 
-            {/* Light / Dark Mode Toggle */}
+            {/* Light / Dark / System Mode Toggle */}
             <button
               onClick={() => {
                 HapticService.lightTap();
                 onToggleTheme();
               }}
-              className="p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              title="Toggle Theme"
+              className="w-10 h-10 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center relative"
+              title={`Theme: ${theme} (Click to toggle)`}
+              aria-label="Toggle Color Theme"
             >
-              {theme === "dark" ? (
+              {isEffectiveDark ? (
                 <Sun className="w-5 h-5 text-amber-400" />
               ) : (
                 <Moon className="w-5 h-5 text-indigo-600" />
+              )}
+              {theme === "system" && (
+                <span className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
               )}
             </button>
           </div>
@@ -133,13 +139,17 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
             <div className="space-y-5">
               {/* Drawer Header */}
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
-                <div className="space-y-0.5">
-                  <h3 className="text-lg font-black text-indigo-600 dark:text-indigo-400">
-                    MockTrack
-                  </h3>
-                  <p className="text-[11px] font-bold text-slate-500">
-                    {t.tagline}
-                  </p>
+                <div className="flex items-center gap-2.5">
+                  <AppLogo size="md" />
+                  <div className="space-y-0.5">
+                    <div className="flex items-center font-black text-lg tracking-tight select-none">
+                      <span className="text-[#0B2545] dark:text-white">Mock</span>
+                      <span className="text-[#00A86B] dark:text-[#10B981]">Track</span>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-500">
+                      {t.tagline}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowDrawer(false)}
@@ -200,8 +210,16 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                   onClick={() => handleNav("profile")}
                   className="w-full py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-left flex items-center gap-2.5 text-slate-800 dark:text-slate-200 cursor-pointer"
                 >
+                  <User className="w-4 h-4 text-indigo-500" />
+                  <span>Profile &amp; Badges</span>
+                </button>
+
+                <button
+                  onClick={() => handleNav("settings")}
+                  className="w-full py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-left flex items-center gap-2.5 text-slate-800 dark:text-slate-200 cursor-pointer"
+                >
                   <Settings className="w-4 h-4 text-amber-500" />
-                  <span>Settings &amp; Profile</span>
+                  <span>Application Settings</span>
                 </button>
 
                 <button

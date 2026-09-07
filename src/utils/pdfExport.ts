@@ -211,6 +211,47 @@ export function generateBilingualReportHTML(
   `;
 }
 
+export function printPerformanceSummary(
+  candidate: CandidateProfile,
+  activeExam: ExamProfile,
+  attempts: MockAttempt[]
+): void {
+  const reportHtml = generateBilingualReportHTML(candidate, activeExam, attempts);
+  
+  // Try opening a printable window
+  const printWindow = window.open("", "_blank");
+  if (printWindow) {
+    printWindow.document.write(reportHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 400);
+  } else {
+    // Fallback using invisible iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+    
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(reportHtml);
+      doc.close();
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => iframe.remove(), 2000);
+      }, 500);
+    }
+  }
+}
+
 export function downloadBilingualReportPDF(
   candidate: CandidateProfile,
   activeExam: ExamProfile,
