@@ -24,6 +24,7 @@ import {
 import { useTranslation, LanguageCode } from "../i18n/LanguageContext";
 import { HapticService } from "../services/HapticService";
 import { PlatformLogo } from "./PlatformLogo";
+import { AppLogo } from "./AppLogo";
 import { PLATFORMS } from "../data/platforms";
 
 interface SettingsScreenProps {
@@ -406,8 +407,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </button>
       </div>
 
-      {/* App Version Stamp */}
-      <div className="text-center pt-2">
+      {/* App Version Stamp with Official Logo */}
+      <div className="text-center pt-3 flex flex-col items-center justify-center gap-1.5 pb-2">
+        <AppLogo size="sm" withText />
         <p className="text-[11px] font-bold text-slate-400">
           MockTrack v1.5.0 • 100% Offline &amp; Private
         </p>

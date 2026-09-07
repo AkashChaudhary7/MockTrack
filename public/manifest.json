@@ -24,6 +24,12 @@
   "prefer_related_applications": false,
   "icons": [
     {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
@@ -40,12 +46,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
     }
   ],
   "screenshots": [
@@ -72,8 +72,14 @@
       "url": "/?modal=log-mock",
       "icons": [
         {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        },
+        {
           "src": "/icon-192.png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -84,8 +90,14 @@
       "url": "/?modal=ocr-parser",
       "icons": [
         {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        },
+        {
           "src": "/icon-192.png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     },
@@ -96,8 +108,14 @@
       "url": "/?tab=analytics",
       "icons": [
         {
+          "src": "/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        },
+        {
           "src": "/icon-192.png",
-          "sizes": "192x192"
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }
