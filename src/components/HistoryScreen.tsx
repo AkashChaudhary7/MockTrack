@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { MockAttempt, ExamProfile, PlatformId } from "../types";
+import { MockAttempt, ExamProfile, PlatformId, CandidateProfile } from "../types";
 import { PLATFORMS } from "../data/platforms";
 import {
   Search,
@@ -19,17 +19,22 @@ import {
   Sparkles,
   FileSpreadsheet,
   FileText,
+  Eye,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { FileService } from "../services/FileService";
 import { HapticService } from "../services/HapticService";
+import { downloadBilingualReportPDF } from "../utils/pdfExport";
 import { EmptyState } from "./EmptyState";
 import { PlatformLogo } from "./PlatformLogo";
 import { BulkLogModal } from "./BulkLogModal";
+import { MockDetailModal } from "./MockDetailModal";
+import { Doodle3DScorecard, Doodle3DTarget } from "./Doodles3D";
 
 interface HistoryScreenProps {
   attempts: MockAttempt[];
   activeExam: ExamProfile;
+  candidate?: CandidateProfile;
   onEditMock: (mock: MockAttempt) => void;
   onDeleteMock: (id: string) => void;
   onOpenLogModal: () => void;
@@ -39,6 +44,16 @@ interface HistoryScreenProps {
 export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   attempts,
   activeExam,
+  candidate = {
+    name: "Aspirant",
+    targetExam: "",
+    streak: 1,
+    totalTimeSpentMinutes: 0,
+    avatarSeed: "aspirant",
+    activeExamProfileId: "",
+    theme: "system" as const,
+    showSplashOnStartup: false,
+  },
   onEditMock,
   onDeleteMock,
   onOpenLogModal,
@@ -48,11 +63,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<string>("all");
   const [selectedTestType, setSelectedTestType] = useState<string>("all");
-  const [quickFilter, setQuickFilter] = useState<"all" | "last7" | "last30" | "topScores" | "highAccuracy" | "needsReview">("all");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "highest" | "lowest">("newest");
+  const [sortBy, setSortBy] = useState<string>("newest");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState<boolean>(false);
   const [isDataMenuOpen, setIsDataMenuOpen] = useState<boolean>(false);
+  const [selectedMockForDetail, setSelectedMockForDetail] = useState<MockAttempt | null>(null);
 
   const examMocks = useMemo(() => {
     return attempts.filter((a) => a.profileId === activeExam.id);
@@ -124,7 +139,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         if (searchTerm.trim()) {
           const q = searchTerm.toLowerCase();
           const matchesTitle = mock.title.toLowerCase().includes(q);
-          const matchesPlatform = (PLATFORMS[mock.platform]?.name || mock.platform).toLowerCase().includes(q);
+          const matchesPlatform = (PLATFORMS[mock.platform as PlatformId]?.name || mock.platform).toLowerCase().includes(q);
           const matchesWeak = (mock.weakAreas || []).some((w) => w.toLowerCase().includes(q));
           const matchesNotes = (mock.notes || "").toLowerCase().includes(q);
           if (!matchesTitle && !matchesPlatform && !matchesWeak && !matchesNotes) return false;
@@ -137,30 +152,42 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         if (selectedTestType !== "all" && mock.testType !== selectedTestType) {
           return false;
         }
-        // Quick filter chips
-        if (quickFilter !== "all") {
+        // Filter options combined into sorting selector
+        if (sortBy === "last7") {
           const mDate = new Date(mock.date + "T00:00:00").getTime();
           const diffDays = (now - mDate) / (1000 * 60 * 60 * 24);
-          if (quickFilter === "last7" && !(diffDays >= -1 && diffDays <= 7)) return false;
-          if (quickFilter === "last30" && !(diffDays >= -1 && diffDays <= 30)) return false;
-          if (quickFilter === "topScores" && !(mock.score >= target || (mock.maxMarks > 0 && (mock.score / mock.maxMarks) >= 0.75))) return false;
-          if (quickFilter === "highAccuracy" && mock.accuracy < 85) return false;
-          if (quickFilter === "needsReview" && !((mock.weakAreas && mock.weakAreas.length > 0) || mock.accuracy < 70)) return false;
+          if (!(diffDays >= -1 && diffDays <= 7)) return false;
+        } else if (sortBy === "last30") {
+          const mDate = new Date(mock.date + "T00:00:00").getTime();
+          const diffDays = (now - mDate) / (1000 * 60 * 60 * 24);
+          if (!(diffDays >= -1 && diffDays <= 30)) return false;
+        } else if (sortBy === "topScores") {
+          if (!(mock.score >= target || (mock.maxMarks > 0 && (mock.score / mock.maxMarks) >= 0.75))) return false;
+        } else if (sortBy === "highAccuracy") {
+          if (mock.accuracy < 85) return false;
+        } else if (sortBy === "needsReview") {
+          if (!((mock.weakAreas && mock.weakAreas.length > 0) || mock.accuracy < 70)) return false;
         }
         return true;
       })
       .sort((a, b) => {
-        if (sortBy === "newest") return new Date(b.date).getTime() - new Date(a.date).getTime();
         if (sortBy === "oldest") return new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (sortBy === "highest") return b.score - a.score;
+        if (sortBy === "highest" || sortBy === "topScores") return b.score - a.score;
         if (sortBy === "lowest") return a.score - b.score;
-        return 0;
+        if (sortBy === "highAccuracy") return b.accuracy - a.accuracy;
+        // Default: newest first
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
       });
-  }, [examMocks, searchTerm, selectedPlatform, selectedTestType, quickFilter, sortBy, activeExam]);
+  }, [examMocks, searchTerm, selectedPlatform, selectedTestType, sortBy, activeExam]);
 
   const handleExportCSV = () => {
     HapticService.lightTap();
     FileService.exportMocksCSV(filteredMocks);
+  };
+
+  const handleExportPDF = () => {
+    HapticService.achievement();
+    downloadBilingualReportPDF(candidate, activeExam, examMocks);
   };
 
   const confirmDelete = (id: string) => {
@@ -190,8 +217,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                 setIsDataMenuOpen(!isDataMenuOpen);
               }}
               className="p-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 transition-colors shadow-2xs cursor-pointer flex items-center justify-center active:scale-95"
-              title="Import / Export CSV"
-              aria-label="Import or Export CSV"
+              title="Import / Export Data"
+              aria-label="Import or Export Data"
             >
               <ArrowUpDown className="w-4 h-4" />
             </button>
@@ -202,7 +229,20 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsDataMenuOpen(false)}
                 />
-                <div className="absolute left-0 mt-1.5 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute left-0 mt-1.5 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDataMenuOpen(false);
+                      handleExportPDF();
+                    }}
+                    disabled={examMocks.length === 0}
+                    className="w-full px-2.5 py-2 text-left rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer disabled:opacity-40"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                    <span>Export Full PDF Report</span>
+                  </button>
+
                   {onBulkAddAttempts && (
                     <button
                       type="button"
@@ -236,17 +276,18 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            HapticService.lightTap();
-            onOpenLogModal();
-          }}
-          className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition-all"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Log Mock</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={examMocks.length === 0}
+            className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-800 text-xs font-black flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 transition-all disabled:opacity-40"
+            title="Download Complete Performance PDF Report"
+          >
+            <FileText className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+            <span className="hidden sm:inline">PDF Report</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Top Metric Strip Card (Screenshots 5 & 6) */}
@@ -341,83 +382,29 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             </select>
           </div>
 
-          {/* Sort By */}
+          {/* Sort & Filter By (Unified Selector defaulting to Newest First) */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full bg-transparent font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer text-xs"
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full bg-transparent font-black text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer text-xs"
             >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="highest">Highest Score</option>
-              <option value="lowest">Lowest Score</option>
+              <option value="newest">Sort: Newest First (Default)</option>
+              <option value="oldest">Sort: Oldest First</option>
+              <option value="highest">Sort: Highest Score</option>
+              <option value="lowest">Sort: Lowest Score</option>
+              <option value="last7">Filter: Last 7 Days</option>
+              <option value="last30">Filter: Last 30 Days</option>
+              <option value="topScores">Filter: Top Scores (≥ Target)</option>
+              <option value="highAccuracy">Filter: High Accuracy (85%+)</option>
+              <option value="needsReview">Filter: Needs Review / Mistakes</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Quick Filter Chips Row (Last 7 Days, Top Scores, High Accuracy, etc.) */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Quick Filter Attempts
-          </span>
-          {quickFilter !== "all" && (
-            <button
-              onClick={() => {
-                HapticService.lightTap();
-                setQuickFilter("all");
-              }}
-              className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-            >
-              Reset Filter
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {[
-            { id: "all", label: "All", icon: "📋", count: quickFilterCounts.all },
-            { id: "last7", label: "Last 7 Days", icon: "⚡", count: quickFilterCounts.last7 },
-            { id: "last30", label: "Last 30 Days", icon: "🗓️", count: quickFilterCounts.last30 },
-            { id: "topScores", label: "Top Scores", icon: "🏆", count: quickFilterCounts.topScores },
-            { id: "highAccuracy", label: "Accuracy 85%+", icon: "🎯", count: quickFilterCounts.highAccuracy },
-            { id: "needsReview", label: "Needs Review", icon: "⚠️", count: quickFilterCounts.needsReview },
-          ].map((chip) => {
-            const isActive = quickFilter === chip.id;
-            return (
-              <button
-                key={chip.id}
-                onClick={() => {
-                  HapticService.selection();
-                  setQuickFilter(chip.id as any);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                  isActive
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs ring-2 ring-blue-500/50"
-                    : "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-              >
-                <span>{chip.icon}</span>
-                <span>{chip.label}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${
-                    isActive
-                      ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-950"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                  }`}
-                >
-                  {chip.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 5. Mock Records List (Matching Screenshot 5 & 6) */}
+      {/* 5. Mock Records List */}
       {filteredMocks.length === 0 ? (
         <EmptyState
           type="history"
@@ -433,12 +420,14 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         <div className="space-y-3">
           {filteredMocks.map((mock) => {
             const platformInfo = PLATFORMS[mock.platform as PlatformId] || PLATFORMS["other"];
-            const pct = ((mock.score / mock.maxMarks) * 100).toFixed(1);
+            const targetScore = activeExam.targetScore || Math.round(activeExam.totalMarks * 0.75);
+            const targetDiff = Math.round((mock.score - targetScore) * 10) / 10;
+            const isTargetReached = targetDiff >= 0;
 
             return (
               <div
                 key={mock.id}
-                className="card-luminous rounded-2xl p-4 sm:p-5 transition-all space-y-3 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md"
+                className="card-luminous rounded-2xl p-4 sm:p-5 transition-all space-y-3 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md relative overflow-hidden"
               >
                 {/* Header Row */}
                 <div className="flex items-start justify-between gap-3">
@@ -460,14 +449,24 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* Score Pill */}
+                  {/* Score & Target Reached Indicator (No percentage clutter) */}
                   <div className="text-right shrink-0">
                     <div className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400 tabular-nums font-display">
                       {mock.score}{" "}
                       <span className="text-xs font-bold text-slate-400 font-sans">/ {mock.maxMarks}</span>
                     </div>
-                    <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                      {pct}%
+                    <div
+                      className={`text-[11px] font-black tabular-nums flex items-center justify-end gap-1 ${
+                        isTargetReached
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {isTargetReached ? (
+                        <span>+{targetDiff} Target Met 🎯</span>
+                      ) : (
+                        <span>{targetDiff} to Target</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -487,6 +486,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                   {mock.difficulty && (
                     <span className="px-2.5 py-1 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 rounded-xl border border-purple-200/60 dark:border-purple-800">
                       {mock.difficulty}
+                    </span>
+                  )}
+                  {mock.sections && mock.sections.length > 0 && (
+                    <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl border border-indigo-200/60 dark:border-indigo-800 text-[10px]">
+                      {mock.sections.length} Sections
                     </span>
                   )}
                   {mock.weakAreas && mock.weakAreas.length > 0 && (
@@ -521,30 +525,42 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                   </div>
                 )}
 
-                {/* Card Controls */}
+                {/* Card Controls with View Details */}
                 <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      HapticService.selection();
+                      setSelectedMockForDetail(mock);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/60 dark:border-slate-700 text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>View Details</span>
+                  </button>
+
                   {deleteConfirmId === mock.id ? (
-                    <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/70 p-2 rounded-2xl border border-rose-200 dark:border-rose-800 w-full justify-between">
+                    <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/70 p-1.5 rounded-2xl border border-rose-200 dark:border-rose-800">
                       <span className="text-xs font-black text-rose-700 dark:text-rose-300">
-                        Delete this attempt record?
+                        Delete?
                       </span>
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => confirmDelete(mock.id)}
-                          className="px-3 py-1 bg-rose-600 text-white font-black text-xs rounded-xl cursor-pointer"
+                          className="px-2.5 py-1 bg-rose-600 text-white font-black text-xs rounded-xl cursor-pointer"
                         >
-                          Delete
+                          Confirm
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(null)}
-                          className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl cursor-pointer"
+                          className="px-2.5 py-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl cursor-pointer"
                         >
                           Cancel
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="flex items-center gap-1 ml-auto">
                       <button
                         onClick={() => {
                           HapticService.lightTap();
@@ -572,6 +588,21 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             );
           })}
         </div>
+      )}
+
+      {/* Mock Detail Pop-up Modal */}
+      {selectedMockForDetail && (
+        <MockDetailModal
+          isOpen={!!selectedMockForDetail}
+          onClose={() => setSelectedMockForDetail(null)}
+          mock={selectedMockForDetail}
+          candidate={candidate}
+          activeExam={activeExam}
+          onEditMock={(m) => {
+            setSelectedMockForDetail(null);
+            onEditMock(m);
+          }}
+        />
       )}
 
       {/* Bulk Log CSV Import Modal */}

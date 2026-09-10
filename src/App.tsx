@@ -5,6 +5,7 @@ import {
   MockAttempt,
   MistakeReviewItem,
   NavTab,
+  PlatformId,
 } from "./types";
 import {
   INITIAL_CANDIDATE,
@@ -181,6 +182,51 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("mocktrack_weak_areas_history", JSON.stringify(weakAreasHistory));
   }, [weakAreasHistory]);
+
+  // Advance Tier Link Sync: Handle bookmarklet import_solution payload
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const importSol = sp.get("import_solution");
+      if (importSol) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(importSol));
+          if (parsed && (parsed.text || parsed.title)) {
+            // Remove the query param cleanly from URL without reloading
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+
+            // Call backend AI parser for solution text
+            fetch("/api/ocr-scorecard", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ rawText: parsed.text }),
+            })
+              .then((res) => res.json())
+              .then((json) => {
+                if (json.success && json.data) {
+                  const d = json.data;
+                  setEditingAttempt({
+                    platform: (parsed.platform?.toLowerCase() as PlatformId) || d.platform || "testbook",
+                    title: d.testTitle || parsed.title,
+                    score: d.marksObtained || 0,
+                    maxMarks: d.maxMarks || 200,
+                    correctCount: d.correctCount,
+                    incorrectCount: d.incorrectCount,
+                    percentile: d.percentile,
+                    sections: d.sections,
+                  });
+                  setIsLogModalOpen(true);
+                }
+              })
+              .catch((err) => console.warn("Bookmarklet sync parse error:", err));
+          }
+        } catch (e) {
+          console.warn("Invalid import_solution data:", e);
+        }
+      }
+    }
+  }, []);
 
   // Perfect Theme Synchronization for Dark, Light, and System Modes
   useEffect(() => {
@@ -538,6 +584,7 @@ export default function App() {
             <HistoryScreen
               attempts={attempts}
               activeExam={activeExam}
+              candidate={candidate}
               onEditMock={(mock) => {
                 setEditingAttempt(mock);
                 setActiveTab("log");
@@ -552,7 +599,11 @@ export default function App() {
           )}
 
           {activeTab === "insights" && (
-            <InsightsScreen activeExam={activeExam} attempts={attempts} />
+            <InsightsScreen
+              activeExam={activeExam}
+              attempts={attempts}
+              candidate={candidate}
+            />
           )}
 
           {activeTab === "reports" && (

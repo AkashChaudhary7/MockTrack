@@ -26,9 +26,18 @@ import { useTranslation } from "../i18n/LanguageContext";
 import { PlatformLogo } from "./PlatformLogo";
 import { HapticService } from "../services/HapticService";
 import { CalendarViewModal } from "./CalendarViewModal";
-import { ExperienceFeedbackBanner } from "./ExperienceFeedbackBanner";
 import { FeedbackModal } from "./FeedbackModal";
 import { FirstMockGuideBanner } from "./FirstMockGuideBanner";
+import { TargetScoreBanner } from "./TargetScoreBanner";
+import { RecentMocksFeedbackSection } from "./RecentMocksFeedbackSection";
+import { MockDetailModal } from "./MockDetailModal";
+import {
+  Doodle3DFlame,
+  Doodle3DTrophy,
+  Doodle3DStopwatch,
+  Doodle3DSparkle,
+  Doodle3DShield,
+} from "./Doodles3D";
 
 interface DashboardScreenProps {
   candidate: CandidateProfile;
@@ -85,6 +94,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 }) => {
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState<boolean>(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState<boolean>(false);
+  const [selectedMockForDetail, setSelectedMockForDetail] = useState<MockAttempt | null>(null);
   const { t, effectiveLang } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
   const analytics = calculateAnalytics(attempts, activeExam);
@@ -128,6 +138,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const currentAvgScore = avgFullMockScore > 0 ? avgFullMockScore : (latestAttempt?.score || 0);
   const progressPercent = Math.min(100, Math.round((currentAvgScore / targetScore) * 100));
   const remainingMarks = Math.max(0, Math.round((targetScore - currentAvgScore) * 10) / 10);
+
+  // Cutoff Probability calculation
+  const cutoffTarget = activeExam.targetScore || Math.round(activeExam.totalMarks * 0.7);
+  const cutoffProbability = examAttempts.length > 0 && cutoffTarget > 0
+    ? Math.min(99, Math.max(20, Math.round(((analytics.baselineScore || currentAvgScore) / cutoffTarget) * 88)))
+    : 0;
 
   // Time-based greeting
   const today = new Date();
@@ -186,15 +202,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </motion.div>
       )}
 
-      {/* 3. SUGGESTION & EXPERIENCE FEEDBACK BANNER */}
-      <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
-        <ExperienceFeedbackBanner
-          activeExam={activeExam}
-          attempts={attempts}
-          onOpenFeedbackModal={() => setIsFeedbackModalOpen(true)}
-        />
-      </motion.div>
-
       {/* 3. UNOBTRUSIVE CELEBRATION MILESTONE PROMPT (if triggered) */}
       {activeMilestone && (
         <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
@@ -206,7 +213,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         </motion.div>
       )}
 
-      {/* 3. QUICK STATS - With Practice Time and Share Progress Action */}
+      {/* 4. TARGET SCORE - Clean Animated Banner (just above Quick Stats, keep only target) */}
+      <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
+        <TargetScoreBanner
+          activeExam={activeExam}
+          attempts={examAttempts}
+          avgFullMockScore={avgFullMockScore}
+          latestAttempt={latestAttempt}
+        />
+      </motion.div>
+
+      {/* 5. QUICK STATS - With Practice Time, Micro 3D Doodles & Tactile Cards */}
       <motion.div
         variants={shouldReduceMotion ? undefined : itemVariants}
         className="card-luminous rounded-2xl p-3.5 sm:p-4 space-y-3"
@@ -248,159 +265,83 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {/* Total Mocks */}
-          <div className="p-2.5 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100/70 dark:border-indigo-800/50 text-center transition-all hover:scale-[1.02]">
+          <div className="p-2.5 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100/70 dark:border-indigo-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center">
             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
               Total Mocks
             </span>
-            <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 block tabular-nums font-display">
+            <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 block tabular-nums font-display my-0.5">
               {examAttempts.length}
             </span>
+            <span className="text-[9px] text-indigo-500/80 font-bold uppercase tracking-wider">Logged</span>
           </div>
 
-          {/* Current Streak */}
-          <div className="p-2.5 bg-amber-50/60 dark:bg-amber-950/30 rounded-xl border border-amber-200/60 dark:border-amber-800/50 text-center transition-all hover:scale-[1.02]">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-              Streak
-            </span>
-            <span className="text-base sm:text-lg font-black text-amber-500 dark:text-amber-400 block tabular-nums font-display">
+          {/* Current Streak with 3D Flame Doodle */}
+          <div className="p-2.5 bg-amber-50/60 dark:bg-amber-950/30 rounded-xl border border-amber-200/60 dark:border-amber-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center relative overflow-hidden group">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                Streak
+              </span>
+              <Doodle3DFlame size={14} className="shrink-0 transition-transform group-hover:scale-125" />
+            </div>
+            <span className="text-base sm:text-lg font-black text-amber-500 dark:text-amber-400 block tabular-nums font-display my-0.5">
               {streakStats.currentStreak}d
             </span>
+            <span className="text-[9px] text-amber-600/80 dark:text-amber-400/80 font-bold">Active</span>
           </div>
 
-          {/* Highest Score (Full Mocks) */}
-          <div className="p-2.5 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-200/60 dark:border-purple-800/50 text-center transition-all hover:scale-[1.02]">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate" title="Excludes sectional and topic tests">
-              Highest
-            </span>
-            <span className="text-base sm:text-lg font-black text-purple-600 dark:text-purple-400 block tabular-nums font-display">
+          {/* Highest Score with 3D Trophy Doodle */}
+          <div className="p-2.5 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-200/60 dark:border-purple-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center relative overflow-hidden group" title="Excludes sectional and topic tests">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                Highest
+              </span>
+              <Doodle3DTrophy size={14} className="shrink-0 transition-transform group-hover:scale-125" />
+            </div>
+            <span className="text-base sm:text-lg font-black text-purple-600 dark:text-purple-400 block tabular-nums font-display my-0.5">
               {highestFullMockScore > 0 ? highestFullMockScore : "--"}
             </span>
+            <span className="text-[9px] text-purple-500/80 font-bold">Peak Best</span>
           </div>
 
           {/* Average Score (Full Mocks) */}
-          <div className="p-2.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-200/60 dark:border-blue-800/50 text-center transition-all hover:scale-[1.02]">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate" title="Excludes sectional and topic tests">
+          <div className="p-2.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-200/60 dark:border-blue-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center" title="Excludes sectional and topic tests">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
               Avg Score
             </span>
-            <span className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 block tabular-nums font-display">
+            <span className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 block tabular-nums font-display my-0.5">
               {avgFullMockScore > 0 ? avgFullMockScore : "--"}
             </span>
+            <span className="text-[9px] text-blue-500/80 font-bold">Overall</span>
           </div>
 
-          {/* Practice Time */}
-          <div className="p-2.5 bg-sky-50/60 dark:bg-sky-950/30 rounded-xl border border-sky-200/60 dark:border-sky-800/50 text-center transition-all hover:scale-[1.02]">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-              Practice Time
+          {/* Cutoff Probability with 3D Shield Doodle */}
+          <div className="p-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/60 dark:border-emerald-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center group">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                Cutoff Odds
+              </span>
+              <Doodle3DShield size={14} className="shrink-0 transition-transform group-hover:scale-125" />
+            </div>
+            <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 block tabular-nums font-display my-0.5">
+              {examAttempts.length > 0 ? `${cutoffProbability}%` : "--"}
             </span>
-            <span className="text-base sm:text-lg font-black text-sky-600 dark:text-sky-400 block tabular-nums font-display">
-              {formatPracticeTime(practiceStats.allTimeMinutes)}
+            <span className="text-[9px] text-emerald-500/80 font-bold">
+              {cutoffProbability >= 85 ? "High Safety" : cutoffProbability >= 70 ? "Promising" : "Developing"}
             </span>
           </div>
 
-          {/* Accuracy */}
-          <div className="p-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/60 dark:border-emerald-800/50 text-center transition-all hover:scale-[1.02]">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-              Accuracy
-            </span>
-            <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 block tabular-nums font-display">
+          {/* Accuracy with 3D Sparkle */}
+          <div className="p-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/60 dark:border-emerald-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center group">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                Accuracy
+              </span>
+              <Doodle3DSparkle size={12} className="shrink-0 transition-transform group-hover:scale-125" />
+            </div>
+            <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 block tabular-nums font-display my-0.5">
               {overallAccuracy}%
             </span>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* 3. TARGET COMPONENT - Minimized & Perfectly aligned for Mobile View */}
-      <motion.div
-        variants={shouldReduceMotion ? undefined : itemVariants}
-        className="card-luminous rounded-2xl p-3.5 sm:p-4 space-y-3"
-      >
-        {/* Top Target Row */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <Target className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 truncate font-display">
-                Target: {targetScore} / {activeExam.totalMarks}
-              </span>
-              <span className="px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 text-[10px] font-black border border-indigo-200/70 dark:border-indigo-800 tabular-nums">
-                {progressPercent}%
-              </span>
-            </div>
-          </div>
-
-          {onOpenSetDateModal && (
-            <button
-              onClick={() => {
-                HapticService.lightTap();
-                onOpenSetDateModal();
-              }}
-              className="text-[11px] font-bold text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-            >
-              Edit Goal
-            </button>
-          )}
-        </div>
-
-        {/* Minimalist Slim Progress Bar */}
-        <div className="space-y-1">
-          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-blue-500 to-emerald-400 shadow-[0_0_8px_rgba(99,102,241,0.35)] transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.max(3, progressPercent))}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
-            <span className="tabular-nums">
-              Avg: <strong className="text-slate-700 dark:text-slate-200 font-black">{currentAvgScore}</strong> Marks
-            </span>
-            <span
-              className={`tabular-nums ${
-                remainingMarks === 0
-                  ? "text-emerald-600 dark:text-emerald-400 font-black"
-                  : "text-indigo-600 dark:text-indigo-400 font-black"
-              }`}
-            >
-              {remainingMarks === 0 ? "Target Met! 🎯" : `+${remainingMarks} needed`}
-            </span>
-          </div>
-        </div>
-
-        {/* 4 Clean Micro Metrics Tiles (Single-line, perfectly aligned for mobile) */}
-        <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800/80">
-          <div className="p-1.5 sm:p-2 bg-blue-50/50 dark:bg-blue-950/25 rounded-xl border border-blue-100/70 dark:border-blue-900/30 text-center">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block truncate">
-              Baseline
-            </span>
-            <span className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 block truncate tabular-nums font-display">
-              {examAttempts.length > 0 ? analytics.baselineScore : "--"}
-            </span>
-          </div>
-
-          <div className="p-1.5 sm:p-2 bg-amber-50/50 dark:bg-amber-950/25 rounded-xl border border-amber-100/70 dark:border-amber-900/30 text-center">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block truncate">
-              Peak Best
-            </span>
-            <span className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 block truncate tabular-nums font-display">
-              {examAttempts.length > 0 ? analytics.peakScore : "--"}
-            </span>
-          </div>
-
-          <div className="p-1.5 sm:p-2 bg-indigo-50/50 dark:bg-indigo-950/25 rounded-xl border border-indigo-100/70 dark:border-indigo-900/30 text-center">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block truncate">
-              Latest
-            </span>
-            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 block truncate tabular-nums font-display">
-              {latestAttempt ? latestAttempt.score : "--"}
-            </span>
-          </div>
-
-          <div className="p-1.5 sm:p-2 bg-emerald-50/50 dark:bg-emerald-950/25 rounded-xl border border-emerald-100/70 dark:border-emerald-900/30 text-center">
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block truncate">
-              Accuracy
-            </span>
-            <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 block truncate tabular-nums font-display">
-              {examAttempts.length > 0 ? `${analytics.overallAccuracy}%` : "--"}
-            </span>
+            <span className="text-[9px] text-emerald-500/80 font-bold">Precision</span>
           </div>
         </div>
       </motion.div>
@@ -478,7 +419,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   key={attempt.id}
                   onClick={() => {
                     HapticService.lightTap();
-                    onSelectAttempt(attempt);
+                    setSelectedMockForDetail(attempt);
                   }}
                   className="card-luminous rounded-2xl p-3.5 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md cursor-pointer space-y-2.5 group transition-all active:scale-[0.99]"
                 >
@@ -501,7 +442,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       </div>
                     </div>
 
-                    {/* Score */}
+                    {/* Score (Raw marks without percentage) */}
                     <div className="text-right shrink-0">
                       <div className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 font-display tabular-nums">
                         {attempt.score}{" "}
@@ -509,13 +450,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                           / {attempt.maxMarks}
                         </span>
                       </div>
-                      <div className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                        {pct}% Score
-                      </div>
                     </div>
                   </div>
 
-                  {/* Concise Stats Pill Row */}
+                  {/* Concise Stats Pill Row + Small & Beautiful "View Details" button */}
                   <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
                     <div className="flex items-center gap-1.5 font-extrabold">
                       <span className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center gap-1 text-[10px] font-black tabular-nums">
@@ -533,19 +471,42 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                           </span>
                         </span>
                       )}
+
+                      {attempt.percentile !== undefined && attempt.percentile > 0 && (
+                        <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 text-[10px] font-black">
+                          {attempt.percentile}%ile
+                        </span>
+                      )}
                     </div>
 
-                    {attempt.percentile !== undefined && attempt.percentile > 0 && (
-                      <span className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 text-[10px] font-black">
-                        {attempt.percentile}%ile
-                      </span>
-                    )}
+                    {/* Small and Beautiful "View Details" trigger */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        HapticService.selection();
+                        setSelectedMockForDetail(attempt);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900/80 text-indigo-600 dark:text-indigo-400 text-[10px] font-black flex items-center gap-1 border border-indigo-200/60 dark:border-indigo-800/60 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>View Details</span>
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+      </motion.div>
+
+      {/* 6. COMMUNITY FEEDBACK & APP SUGGESTIONS (Direct to mobographie@gmail.com) */}
+      <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
+        <RecentMocksFeedbackSection
+          activeExam={activeExam}
+          candidateName={candidate.name}
+          onOpenInAppModal={() => setIsFeedbackModalOpen(true)}
+        />
       </motion.div>
 
       {/* Calendar View Modal */}
@@ -562,6 +523,19 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         isOpen={isFeedbackModalOpen}
         onClose={() => setIsFeedbackModalOpen(false)}
         candidateName={candidate.name}
+      />
+
+      {/* Mock Detail Pop-Up Mode with Candidate Name, Share & Edit */}
+      <MockDetailModal
+        isOpen={!!selectedMockForDetail}
+        onClose={() => setSelectedMockForDetail(null)}
+        mock={selectedMockForDetail}
+        candidate={candidate}
+        activeExam={activeExam}
+        onEditMock={(mock) => {
+          setSelectedMockForDetail(null);
+          onSelectAttempt(mock);
+        }}
       />
     </motion.div>
   );

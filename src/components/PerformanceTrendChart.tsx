@@ -144,46 +144,19 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
 
   return (
     <div className="card-luminous rounded-3xl p-4 sm:p-5 space-y-4">
-      {/* Header Info */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-        <div>
-          <h3 className="text-sm sm:text-base font-black font-display text-slate-900 dark:text-white flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span>Score Progression (Last {sorted.length} Mocks)</span>
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium flex items-center gap-2">
-            <span>Avg: <strong className="text-indigo-600 dark:text-indigo-400 font-black font-display">{tenMockAvg}</strong></span>
-            <span>•</span>
-            <span>Peak: <strong className="text-emerald-600 dark:text-emerald-400 font-black font-display">{tenMockPeak}</strong></span>
-            <span>•</span>
-            <span className="flex items-center gap-0.5">
-              Net Gain:
-              <strong className={`font-black flex items-center font-display ${windowDelta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                {windowDelta >= 0 ? <ArrowUpRight className="w-3.5 h-3.5 inline" /> : <ArrowDownRight className="w-3.5 h-3.5 inline" />}
-                {windowDelta >= 0 ? `+${windowDelta}` : windowDelta}
-              </strong>
-            </span>
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs font-bold">
-          <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-extrabold font-display">
-            {sorted.length}/10 Plotted
-          </span>
-          <span
-            className={`px-2.5 py-1 rounded-full border text-[11px] font-black ${
-              isAboveBaseline
-                ? "bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                : "bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-            }`}
-          >
-            {isAboveBaseline ? "Above Target 🎯" : "Target Gap ⚠️"}
-          </span>
-        </div>
+      {/* Header Info - Clean & Minimal */}
+      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+        <h3 className="text-sm sm:text-base font-black font-display text-slate-900 dark:text-white flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span>Score Progression</span>
+        </h3>
+        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 font-display">
+          Chronological Trend
+        </span>
       </div>
 
       {/* Recharts LineChart Container */}
-      <div className="w-full h-56 sm:h-64 select-none pt-2">
+      <div className="w-full h-52 sm:h-60 select-none pt-1">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -220,7 +193,7 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
               strokeDasharray="4 4"
               strokeWidth={1.5}
               label={{
-                value: `Baseline ${baselineScore}`,
+                value: `Target ${baselineScore}`,
                 fill: "#6366f1",
                 fontSize: 10,
                 fontWeight: 800,
@@ -253,21 +226,87 @@ export const PerformanceTrendChart: React.FC<PerformanceTrendChartProps> = ({
         </ResponsiveContainer>
       </div>
 
-      {/* Legend & Recent Attempt Stats */}
-      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-            Mock Score
-          </span>
-          <span className="flex items-center gap-1.5 text-indigo-500">
-            <span className="w-3 border-t-2 border-dashed border-indigo-500" />
-            Baseline Target
-          </span>
+      {/* Beautiful Stat Strip Below the Chart */}
+      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
+        {/* Metric Cards Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center font-display">
+          {/* 1. Plotted */}
+          <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/50">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block uppercase">
+              Plotted
+            </span>
+            <span className="text-sm font-black text-slate-800 dark:text-slate-200 tabular-nums">
+              {sorted.length}/10 Mocks
+            </span>
+          </div>
+
+          {/* 2. Avg Score */}
+          <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100/70 dark:border-indigo-800/50">
+            <span className="text-[10px] font-bold text-indigo-500/90 dark:text-indigo-400/90 block uppercase">
+              Avg
+            </span>
+            <span className="text-sm font-black text-indigo-700 dark:text-indigo-300 tabular-nums">
+              {tenMockAvg}
+            </span>
+          </div>
+
+          {/* 3. Peak Score */}
+          <div className="p-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/40 border border-purple-100/70 dark:border-purple-800/50">
+            <span className="text-[10px] font-bold text-purple-500/90 dark:text-purple-400/90 block uppercase">
+              Peak
+            </span>
+            <span className="text-sm font-black text-purple-700 dark:text-purple-300 tabular-nums">
+              {tenMockPeak}
+            </span>
+          </div>
+
+          {/* 4. Net Gain */}
+          <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/50">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 block uppercase">
+              Net Gain
+            </span>
+            <span
+              className={`text-sm font-black tabular-nums flex items-center justify-center gap-0.5 ${
+                windowDelta >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400"
+              }`}
+            >
+              {windowDelta >= 0 ? <ArrowUpRight className="w-3.5 h-3.5 inline" /> : <ArrowDownRight className="w-3.5 h-3.5 inline" />}
+              {windowDelta >= 0 ? `+${windowDelta}` : windowDelta}
+            </span>
+          </div>
+
+          {/* 5. Target Status */}
+          <div
+            className={`col-span-2 sm:col-span-1 p-2 rounded-xl border flex flex-col justify-center items-center ${
+              isAboveBaseline
+                ? "bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300"
+                : "bg-amber-50/60 dark:bg-amber-950/40 border-amber-200/70 dark:border-amber-800/60 text-amber-700 dark:text-amber-300"
+            }`}
+          >
+            <span className="text-[10px] font-bold uppercase opacity-80">Target</span>
+            <span className="text-xs font-black">
+              {isAboveBaseline ? "Above Goal 🎯" : "Target Gap ⚠️"}
+            </span>
+          </div>
         </div>
 
-        <div className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
-          Latest Score: <span className="text-blue-600 dark:text-blue-400">{lastInWindow} Marks</span>
+        {/* Legend Row */}
+        <div className="flex items-center justify-between text-xs font-bold text-slate-400 pt-1">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+              <span className="w-2 h-2 rounded-full bg-indigo-600" />
+              Mock Score
+            </span>
+            <span className="flex items-center gap-1.5 text-indigo-500">
+              <span className="w-3 border-t-2 border-dashed border-indigo-500" />
+              Target Line
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+            Latest: <strong className="text-indigo-600 dark:text-indigo-400 font-black">{lastInWindow} M</strong>
+          </span>
         </div>
       </div>
     </div>

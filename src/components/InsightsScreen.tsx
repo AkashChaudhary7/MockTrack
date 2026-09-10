@@ -19,13 +19,17 @@ import {
   Clock,
   Compass,
   Lightbulb,
+  FileText,
 } from "lucide-react";
 import { EmptyState } from "./EmptyState";
 import { HapticService } from "../services/HapticService";
+import { CandidateProfile } from "../types";
+import { downloadBilingualReportPDF } from "../utils/pdfExport";
 
 interface InsightsScreenProps {
   activeExam: ExamProfile;
   attempts: MockAttempt[];
+  candidate?: CandidateProfile;
 }
 
 interface SubjectInsightData {
@@ -48,6 +52,13 @@ interface SubjectInsightData {
 export const InsightsScreen: React.FC<InsightsScreenProps> = ({
   activeExam,
   attempts,
+  candidate = {
+    name: "Aspirant",
+    avatarSeed: "AS",
+    activeExamProfileId: "",
+    theme: "system" as const,
+    showSplashOnStartup: false,
+  },
 }) => {
   const examAttempts = attempts.filter((a) => a.profileId === activeExam.id);
   const analytics = calculateAnalytics(attempts, activeExam);
@@ -177,18 +188,33 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({
 
   return (
     <div className="space-y-6 pb-28 max-w-3xl mx-auto">
-      {/* Title Header */}
-      <div className="pt-1">
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
-          <span>Insights &amp; Analytics</span>
-          <Sparkles className="w-6 h-6 text-indigo-500" />
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-          Performance Engine &amp; Subject Mastery for {activeExam.name}
-        </p>
+      {/* Title Header with PDF Export Icon */}
+      <div className="pt-1 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+            <span>Insights &amp; Analytics</span>
+            <Sparkles className="w-6 h-6 text-indigo-500" />
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+            Performance Engine &amp; Subject Mastery for {activeExam.name}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            HapticService.achievement();
+            downloadBilingualReportPDF(candidate, activeExam, examAttempts);
+          }}
+          className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-black flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 transition-all shrink-0"
+          title="Export Full PDF Report"
+        >
+          <FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+          <span className="hidden sm:inline">Export PDF</span>
+        </button>
       </div>
 
-      {/* A. Personal Baseline Card */}
+      {/* A. Personal Baseline Card (Cleaned: Cutoff probability removed) */}
       <div className="relative overflow-hidden bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-6 shadow-lg border border-indigo-500/20">
         <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -214,25 +240,16 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({
             </span>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3">
-            <div>
-              <div className="text-4xl sm:text-5xl font-black font-display text-white tracking-tight tabular-nums">
-                {analytics.baselineScore}{" "}
-                <span className="text-lg font-bold text-indigo-300 font-sans">
-                  / {activeExam.totalMarks} Marks
-                </span>
-              </div>
-              <p className="text-xs text-indigo-200 mt-1">
-                Weighted moving average score across {examAttempts.length} logged mocks.
-              </p>
+          <div>
+            <div className="text-4xl sm:text-5xl font-black font-display text-white tracking-tight tabular-nums">
+              {analytics.baselineScore}{" "}
+              <span className="text-lg font-bold text-indigo-300 font-sans">
+                / {activeExam.totalMarks} Marks
+              </span>
             </div>
-
-            <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-xs font-bold space-y-0.5">
-              <div className="text-slate-300">Cut-off Probability</div>
-              <div className="text-emerald-400 font-black text-sm font-display">
-                {analytics.baselineScore >= (activeExam.targetScore || 140) ? "94% (Very High)" : "76% (Promising)"}
-              </div>
-            </div>
+            <p className="text-xs text-indigo-200 mt-1.5">
+              Weighted moving average baseline across {examAttempts.length} logged mocks.
+            </p>
           </div>
         </div>
       </div>

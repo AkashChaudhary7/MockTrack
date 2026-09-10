@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   PlatformId,
   TestType,
@@ -25,11 +25,28 @@ import {
   Sparkles,
   AlertTriangle,
   RotateCcw,
+  Wand2,
+  Calculator,
+  Copy,
+  FileCode,
+  Code,
+  HelpCircle,
+  TrendingUp,
+  Target,
+  Award,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { AppLogo } from "./AppLogo";
 import { PlatformLogo } from "./PlatformLogo";
 import { HapticService } from "../services/HapticService";
+import {
+  calculateScoreFromQuestions,
+  calculateAccuracy,
+  calculatePercentileFromRank,
+  autoGenerateTitle,
+  detectDefaultMarkingScheme,
+  inferMockMetadataFromScore,
+} from "../utils/mockCalculator";
 
 interface SubjectRowState {
   id: string;
@@ -329,6 +346,14 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
   const [platform, setPlatform] = useState<PlatformId>(initialData?.platform || lastPlatform);
   const [scoreInput, setScoreInput] = useState<string>(initialData?.score !== undefined ? String(initialData.score) : "");
   const [maxMarks, setMaxMarks] = useState<number>(initialData?.maxMarks || lastTotalMarks);
+
+  // Score Input Mode: "marks" (direct score) or "questions" (enter correct & wrong qs)
+  const [scoreEntryMode, setScoreEntryMode] = useState<"marks" | "questions">("marks");
+
+  // Advance Tier Link Parsing Sub-Tab: "url" | "paste_html" | "bookmarklet"
+  const [linkSubTab, setLinkSubTab] = useState<"url" | "paste_html" | "bookmarklet">("url");
+  const [pastedHtmlText, setPastedHtmlText] = useState<string>("");
+  const [bookmarkletCopied, setBookmarkletCopied] = useState<boolean>(false);
 
   // Progressive Disclosure State (Hides optional details behind '+ Add Details')
   const [showAddDetails, setShowAddDetails] = useState<boolean>(false);
@@ -836,6 +861,99 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
   const displayTotal = testFormat === "subject" ? subjectTotals.totalMax : currentTotal;
   const displayPct = displayTotal > 0 ? ((displayScore / displayTotal) * 100).toFixed(1) : "0";
 
+  // "Ask Less, Give More" Real-time Inferred Intelligence
+  const inferredData = useMemo(() => {
+    return inferMockMetadataFromScore(
+      displayScore,
+      displayTotal,
+      platform,
+      selectedExamName || activeExam.name,
+      activeExam.targetScore,
+      attempts,
+      activeExam.id
+    );
+  }, [displayScore, displayTotal, platform, selectedExamName, activeExam, attempts]);
+
+  // Questions calculation handler
+  const handleQuestionsChange = (cStr: string, iStr: string) => {
+    setCorrectCount(cStr);
+    setIncorrectCount(iStr);
+    const c = parseInt(cStr) || 0;
+    const w = parseInt(iStr) || 0;
+    const scheme = detectDefaultMarkingScheme(selectedExamName || activeExam.name, maxMarks || 200);
+    const calculated = calculateScoreFromQuestions(c, w, scheme.correctMarks, scheme.penaltyMarks);
+    setScoreInput(String(calculated.netScore));
+  };
+
+  // 1-Tap apply question breakdown from inferences
+  const handleApplyInferredBreakdown = () => {
+    triggerHaptic(20);
+    setCorrectCount(String(inferredData.estimatedCorrect));
+    setIncorrectCount(String(inferredData.estimatedIncorrect));
+    setPercentile(String(inferredData.estimatedPercentile));
+    if (!title.trim()) {
+      setTitle(inferredData.suggestedTitle);
+    }
+  };
+
+  // Process pasted solution HTML / text (Advance Tier Link)
+  const handleProcessPastedHtml = async () => {
+    if (!pastedHtmlText.trim()) return;
+    setIsProcessing(true);
+    triggerHaptic(15);
+    try {
+      const res = await fetch("/api/ocr-scorecard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rawText: pastedHtmlText }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const d = json.data;
+        if (d.marksObtained !== undefined && d.marksObtained > 0) setScoreInput(String(d.marksObtained));
+        if (d.maxMarks) setMaxMarks(d.maxMarks);
+        if (d.correctCount) setCorrectCount(String(d.correctCount));
+        if (d.incorrectCount) setIncorrectCount(String(d.incorrectCount));
+        if (d.percentile) setPercentile(String(d.percentile));
+        if (d.rank) setRank(String(d.rank));
+        if (d.testTitle) setTitle(d.testTitle);
+        if (d.sections && d.sections.length > 0) {
+          setSubjectRows(d.sections.map((s: any, idx: number) => ({
+            id: String(idx + 1),
+            name: s.name,
+            score: String(s.score),
+            maxMarks: String(s.maxMarks || 50),
+          })));
+          setTestFormat("subject");
+        }
+        setExtractedSuccessData({
+          detectedPlatform: (d.platform?.toLowerCase() as PlatformId) || platform,
+          detectedExam: d.examName || activeExam.name,
+          score: d.marksObtained || 0,
+          maxMarks: d.maxMarks || 200,
+          pct: d.maxMarks ? Math.round(((d.marksObtained || 0) / d.maxMarks) * 100) : 0,
+          title: d.testTitle,
+        });
+      }
+    } catch (err) {
+      console.warn("Pasted HTML parse error", err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const bookmarkletCode = useMemo(() => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return `javascript:(function(){try{var t=document.title,h=location.hostname,b=document.body.innerText.slice(0,16000),p=h.includes('testbook')?'testbook':(h.includes('oliveboard')?'oliveboard':(h.includes('pw')?'physicswallah':'adda247')),d={title:t,host:h,platform:p,text:b};window.open('${origin}/?import_solution='+encodeURIComponent(JSON.stringify(d)),'_blank');}catch(e){alert('MockTrack:'+e.message);}})();`;
+  }, []);
+
+  const handleCopyBookmarklet = () => {
+    triggerHaptic(10);
+    navigator.clipboard.writeText(bookmarkletCode);
+    setBookmarkletCopied(true);
+    setTimeout(() => setBookmarkletCopied(false), 2500);
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 font-sans select-none overflow-hidden">
       <motion.div
@@ -1150,43 +1268,176 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
                   )}
 
                   {/* ================================================= */}
-                  {/* 3. ESSENTIAL FIELD: SCORE / TOTAL                 */}
+                  {/* 3. ESSENTIAL FIELD: SCORE INPUT (Ask Less, Give More) */}
                   {/* ================================================= */}
                   {testFormat === "full" && (
-                    <div className="p-3 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/30 space-y-1">
+                    <div className="space-y-2.5">
+                      {/* Sub-mode: Enter Marks vs Enter Question counts */}
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-black text-indigo-900 dark:text-indigo-200 uppercase tracking-wider">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                           3. Score Input
                         </label>
-                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                          {displayPct}%
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            required
-                            autoFocus
-                            placeholder="e.g. 157 or 157/200"
-                            value={scoreInput}
-                            onChange={(e) => handleScoreInputChange(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-black text-2xl text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                        </div>
-
-                        <span className="text-xl font-black text-slate-400">/</span>
-
-                        <div className="w-24">
-                          <input
-                            type="number"
-                            value={maxMarks}
-                            onChange={(e) => setMaxMarks(Number(e.target.value))}
-                            className="w-full px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-black text-lg text-slate-900 dark:text-slate-100 text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                          <button
+                            type="button"
+                            onClick={() => setScoreEntryMode("marks")}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer transition-all ${
+                              scoreEntryMode === "marks"
+                                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs"
+                                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                            }`}
+                          >
+                            Enter Marks
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setScoreEntryMode("questions")}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer transition-all ${
+                              scoreEntryMode === "questions"
+                                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs"
+                                : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                            }`}
+                          >
+                            Enter Qs (Correct/Wrong)
+                          </button>
                         </div>
                       </div>
+
+                      {scoreEntryMode === "marks" ? (
+                        <div className="p-3.5 rounded-2xl border border-indigo-200 dark:border-indigo-900/80 bg-gradient-to-br from-indigo-50/60 to-white dark:from-indigo-950/30 dark:to-slate-900 space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-slate-500">
+                              Obtained Score / Total Marks
+                            </span>
+                            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                              {displayPct}%
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <input
+                                type="text"
+                                required
+                                autoFocus
+                                placeholder="e.g. 157 or 157/200"
+                                value={scoreInput}
+                                onChange={(e) => handleScoreInputChange(e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-black text-2xl text-indigo-600 dark:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                              />
+                            </div>
+
+                            <span className="text-xl font-black text-slate-400">/</span>
+
+                            <div className="w-24">
+                              <input
+                                type="number"
+                                value={maxMarks}
+                                onChange={(e) => setMaxMarks(Number(e.target.value))}
+                                className="w-full px-2.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-black text-lg text-slate-900 dark:text-slate-100 text-center focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* QUESTIONS ENTRY MODE (AUTO-CALCULATES MARKS) */
+                        <div className="p-3.5 rounded-2xl border border-indigo-200 dark:border-indigo-900/80 bg-gradient-to-br from-indigo-50/60 to-white dark:from-indigo-950/30 dark:to-slate-900 space-y-2 shadow-2xs">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 uppercase block mb-1">
+                                ✓ Correct Questions
+                              </label>
+                              <input
+                                type="number"
+                                placeholder="e.g. 74"
+                                value={correctCount}
+                                onChange={(e) => handleQuestionsChange(e.target.value, incorrectCount)}
+                                className="w-full px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 font-black text-lg text-emerald-600 dark:text-emerald-400 focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-rose-700 dark:text-rose-300 uppercase block mb-1">
+                                ✗ Incorrect Questions
+                              </label>
+                              <input
+                                type="number"
+                                placeholder="e.g. 10"
+                                value={incorrectCount}
+                                onChange={(e) => handleQuestionsChange(correctCount, e.target.value)}
+                                className="w-full px-3 py-2 rounded-xl border border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-900 font-black text-lg text-rose-600 dark:text-rose-400 focus:ring-2 focus:ring-rose-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-200/80 dark:border-slate-800 text-xs">
+                            <span className="text-slate-500 font-medium">Calculated Net Score:</span>
+                            <span className="font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                              {displayScore} / {displayTotal} Marks ({displayPct}%)
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* "GIVE MORE" INFERRED INTELLIGENCE CARD (Automatic Diagnostic Live Output) */}
+                      {displayScore > 0 && (
+                        <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-white to-amber-50/40 dark:from-indigo-950/40 dark:via-slate-900 dark:to-amber-950/20 border border-indigo-200/80 dark:border-indigo-800/80 space-y-2 shadow-xs animate-in fade-in zoom-in-95 duration-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-xs font-black text-indigo-900 dark:text-indigo-200">
+                              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                              <span>Instant Inferred Intelligence</span>
+                            </div>
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300">
+                              {inferredData.cutoffStatus}
+                            </span>
+                          </div>
+
+                          {/* Metric Pill Grid */}
+                          <div className="grid grid-cols-3 gap-1.5 text-center">
+                            <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-750">
+                              <div className="text-[10px] font-bold text-slate-500">Est. Percentile</div>
+                              <div className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                                ~{inferredData.estimatedPercentile}%ile
+                              </div>
+                            </div>
+
+                            <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-750">
+                              <div className="text-[10px] font-bold text-slate-500">Target Comparison</div>
+                              <div className={`text-xs font-black ${inferredData.isAboveTarget ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                {inferredData.isAboveTarget ? `+${inferredData.targetDelta} Surplus` : `${inferredData.targetDelta} pts to goal`}
+                              </div>
+                            </div>
+
+                            <div className="p-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-750">
+                              <div className="text-[10px] font-bold text-slate-500">Est. Accuracy</div>
+                              <div className="text-sm font-black text-slate-800 dark:text-slate-200">
+                                {inferredData.estimatedAccuracy}%
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 1-Tap Apply Estimated Breakdown & Quick Save */}
+                          <div className="flex items-center justify-between pt-1 gap-2">
+                            <button
+                              type="button"
+                              onClick={handleApplyInferredBreakdown}
+                              className="px-2.5 py-1.5 rounded-xl bg-indigo-100/80 dark:bg-indigo-900/50 hover:bg-indigo-200/80 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                              title="Click to apply estimated question breakdown"
+                            >
+                              <Wand2 className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                              <span>Auto-Fill (~{inferredData.estimatedCorrect}C / {inferredData.estimatedIncorrect}W)</span>
+                            </button>
+
+                            <button
+                              type="submit"
+                              form="compactLogForm"
+                              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs cursor-pointer shadow-xs flex items-center gap-1 active:scale-95 transition-all"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Quick Save</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1337,9 +1588,30 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
                         {/* Title & Date */}
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[10px] font-black text-slate-500 uppercase block mb-0.5">
-                              Title / Mock Name
-                            </label>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <label className="text-[10px] font-black text-slate-500 uppercase block">
+                                Title / Mock Name
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  triggerHaptic(10);
+                                  const autoT = autoGenerateTitle(
+                                    platform,
+                                    PLATFORMS[platform]?.name || "Mock",
+                                    testFormat === "subject" ? "Sectional" : testType,
+                                    activeExam.shortCode || "Exam",
+                                    attempts,
+                                    activeExam.id
+                                  );
+                                  setTitle(autoT);
+                                }}
+                                className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+                              >
+                                <Wand2 className="w-3 h-3" />
+                                <span>Auto-Name</span>
+                              </button>
+                            </div>
                             <input
                               type="text"
                               placeholder="e.g. Mock #12"
@@ -1363,48 +1635,89 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
                         </div>
 
                         {/* Question Breakdown & Rank */}
-                        <div className="grid grid-cols-4 gap-1.5">
-                          <div>
-                            <label className="text-[9px] font-bold text-slate-500 uppercase">Correct</label>
-                            <input
-                              type="number"
-                              placeholder="0"
-                              value={correctCount}
-                              onChange={(e) => setCorrectCount(e.target.value)}
-                              className="w-full p-1 rounded border border-slate-300 dark:border-slate-700 text-xs font-bold bg-white dark:bg-slate-900"
-                            />
+                        <div className="space-y-1.5">
+                          <div className="grid grid-cols-4 gap-1.5">
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-500 uppercase">Correct</label>
+                              <input
+                                type="number"
+                                placeholder="0"
+                                value={correctCount}
+                                onChange={(e) => setCorrectCount(e.target.value)}
+                                className="w-full p-1 rounded border border-slate-300 dark:border-slate-700 text-xs font-bold bg-white dark:bg-slate-900"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-500 uppercase">Incorrect</label>
+                              <input
+                                type="number"
+                                placeholder="0"
+                                value={incorrectCount}
+                                onChange={(e) => setIncorrectCount(e.target.value)}
+                                className="w-full p-1 rounded border border-slate-300 dark:border-slate-700 text-xs font-bold bg-white dark:bg-slate-900"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-500 uppercase">Rank</label>
+                              <input
+                                type="number"
+                                placeholder="142"
+                                value={rank}
+                                onChange={(e) => {
+                                  setRank(e.target.value);
+                                  const rNum = parseInt(e.target.value, 10);
+                                  const tNum = parseInt(totalCandidates, 10) || 10000;
+                                  if (rNum > 0 && tNum > 0 && rNum <= tNum && !percentile) {
+                                    const p = calculatePercentileFromRank(rNum, tNum);
+                                    if (p !== null) setPercentile(String(p));
+                                  }
+                                }}
+                                className="w-full p-1 rounded border border-slate-300 dark:border-slate-700 text-xs font-bold bg-white dark:bg-slate-900"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-500 uppercase">Percentile</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                placeholder="98.4"
+                                value={percentile}
+                                onChange={(e) => setPercentile(e.target.value)}
+                                className="w-full p-1 rounded border border-slate-300 dark:border-slate-700 text-xs font-bold bg-white dark:bg-slate-900"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <label className="text-[9px] font-bold text-slate-500 uppercase">Incorrect</label>
-                            <input
-                              type="number"
-                              placeholder="0"
-                              value={incorrectCount}
-                              onChange={(e) => setIncorrectCount(e.target.value)}
-                              className="w-full p-1 rounded border border-slate-300 dark:border-slate-700 text-xs font-bold bg-white dark:bg-slate-900"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[9px] font-bold text-slate-500 uppercase">Rank</label>
-                            <input
-                              type="number"
-                              placeholder="142"
-                              value={rank}
-                              onChange={(e) => setRank(e.target.value)}
-                              className="w-full p-1 rounded border border-slate-300 dark:border-slate-700 text-xs font-bold bg-white dark:bg-slate-900"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[9px] font-bold text-slate-500 uppercase">Percentile</label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              placeholder="98.4"
-                              value={percentile}
-                              onChange={(e) => setPercentile(e.target.value)}
-                              className="w-full p-1 rounded border border-slate-300 dark:border-slate-700 text-xs font-bold bg-white dark:bg-slate-900"
-                            />
-                          </div>
+
+                          {/* Auto-Score Pill if Correct or Incorrect are typed */}
+                          {(correctCount !== "" || incorrectCount !== "") && (
+                            (() => {
+                              const cN = parseInt(correctCount, 10) || 0;
+                              const iN = parseInt(incorrectCount, 10) || 0;
+                              const scheme = detectDefaultMarkingScheme(selectedExamName || activeExam.name, maxMarks);
+                              const res = calculateScoreFromQuestions(cN, iN, scheme.correctMarks, scheme.penaltyMarks);
+                              const acc = calculateAccuracy(cN, iN);
+
+                              return (
+                                <div className="p-2 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/60 flex items-center justify-between gap-2 animate-in fade-in">
+                                  <div className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200">
+                                    <span>⚡ Auto-Score: </span>
+                                    <span className="font-black text-indigo-600 dark:text-indigo-400 font-display text-xs">{res.netScore}</span>
+                                    <span className="text-slate-400 font-medium text-[10px]"> (Acc: {acc}% | Loss: -{res.penaltyLost})</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      triggerHaptic(10);
+                                      setScoreInput(String(res.netScore));
+                                    }}
+                                    className="px-2 py-0.5 bg-indigo-600 text-white rounded text-[10px] font-black hover:bg-indigo-700 cursor-pointer"
+                                  >
+                                    Apply Score
+                                  </button>
+                                </div>
+                              );
+                            })()
+                          )}
                         </div>
 
                         {/* Weak Chapters Selector */}
@@ -1621,122 +1934,285 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
                 </div>
               )}
 
-              {/* METHOD 3: LINK ENTRY */}
+              {/* METHOD 3: ADVANCE TIER LINK ENTRY */}
               {entryMethod === "link" && (
-                <div className="space-y-4 py-2">
-                  {!extractedSuccessData ? (
-                    <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900 space-y-3">
-                      <div>
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">
-                          Paste Result Link
-                        </label>
-                        <div className="flex gap-1.5">
-                          <input
-                            type="url"
-                            placeholder="https://testbook.com/results/..."
-                            value={webUrl}
-                            onChange={(e) => setWebUrl(e.target.value)}
-                            className="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold"
-                          />
-                          <button
-                            type="button"
-                            onClick={handlePasteClipboard}
-                            className="px-2.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs cursor-pointer"
-                          >
-                            Paste
-                          </button>
-                        </div>
-                      </div>
+                <div className="space-y-3.5 py-2">
+                  {/* Link Sub-Tabs Header */}
+                  <div className="flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => setLinkSubTab("url")}
+                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+                        linkSubTab === "url"
+                          ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs"
+                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      🔗 Direct Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLinkSubTab("paste_html")}
+                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+                        linkSubTab === "paste_html"
+                          ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs"
+                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      📋 Paste HTML / Text
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLinkSubTab("bookmarklet")}
+                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-black transition-all cursor-pointer text-center ${
+                        linkSubTab === "bookmarklet"
+                          ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs"
+                          : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      ⚡ 1-Click Sync
+                    </button>
+                  </div>
 
-                      <button
-                        type="button"
-                        onClick={handleProcessLink}
-                        disabled={!webUrl.trim() || isProcessing}
-                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                      >
-                        {isProcessing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Fetching Result...</span>
-                          </>
-                        ) : (
-                          <>
-                            <LinkIcon className="w-4 h-4" />
-                            <span>Fetch Result Data</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ) : (
-                    /* LINK CONFIRMATION SCREEN */
-                    <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-3">
-                      <div className="flex items-center justify-between border-b border-indigo-200 dark:border-indigo-800 pb-2">
-                        <span className="text-xs font-black text-indigo-800 dark:text-indigo-200 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>LINK RECOGNIZED</span>
-                        </span>
-                        <button
-                          onClick={() => setExtractedSuccessData(null)}
-                          className="text-[11px] font-bold text-slate-500 hover:underline"
-                        >
-                          Change Link
-                        </button>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs font-semibold">
-                        <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
-                          <span className="text-slate-500">Platform:</span>
-                          <span className="font-extrabold text-slate-900 dark:text-slate-100">
-                            {PLATFORMS[extractedSuccessData.detectedPlatform]?.name || "Testbook"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
-                          <span className="text-slate-500">Detected Exam:</span>
-                          <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
-                            {extractedSuccessData.detectedExam}
-                          </span>
-                        </div>
-                        {extractedSuccessData.title && (
-                          <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
-                            <span className="text-slate-500">Test Title:</span>
-                            <span className="font-bold text-slate-800 dark:text-slate-200">
-                              {extractedSuccessData.title}
-                            </span>
-                          </div>
-                        )}
-                        {!extractedSuccessData.requiresAuthScore && extractedSuccessData.score > 0 ? (
-                          <div className="flex justify-between py-1">
-                            <span className="text-slate-500">Score:</span>
-                            <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                              {extractedSuccessData.score} / {extractedSuccessData.maxMarks} ({extractedSuccessData.pct}%)
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="py-2 space-y-2">
-                            <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium leading-tight">
-                              🔒 Note: Testbook result pages require account login. Exam, platform &amp; test details have been auto-filled! Please enter your score:
-                            </p>
-                            <div className="flex gap-2">
+                  {/* SUBTAB 1: DIRECT LINK */}
+                  {linkSubTab === "url" && (
+                    <>
+                      {!extractedSuccessData ? (
+                        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900 space-y-3">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                                Paste Test Result / Analysis Link
+                              </label>
+                              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                                Testbook, Oliveboard, PW
+                              </span>
+                            </div>
+                            <div className="flex gap-1.5">
                               <input
-                                type="number"
-                                step="0.25"
-                                placeholder={`Score out of ${extractedSuccessData.maxMarks}`}
-                                value={scoreInput}
-                                onChange={(e) => setScoreInput(e.target.value)}
-                                className="flex-1 px-3 py-2 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 text-xs font-bold"
+                                type="url"
+                                placeholder="https://testbook.com/results/..."
+                                value={webUrl}
+                                onChange={(e) => setWebUrl(e.target.value)}
+                                className="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold"
                               />
+                              <button
+                                type="button"
+                                onClick={handlePasteClipboard}
+                                className="px-2.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs cursor-pointer hover:bg-slate-300"
+                              >
+                                Paste
+                              </button>
                             </div>
                           </div>
-                        )}
+
+                          <button
+                            type="button"
+                            onClick={handleProcessLink}
+                            disabled={!webUrl.trim() || isProcessing}
+                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Extracting Link Metadata...</span>
+                              </>
+                            ) : (
+                              <>
+                                <LinkIcon className="w-4 h-4" />
+                                <span>Fetch Result Data</span>
+                              </>
+                            )}
+                          </button>
+
+                          <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                            <div>
+                              <strong className="font-bold">Behind a Login Wall?</strong> If the platform requires signing into your account, switch to <strong>&ldquo;Paste HTML / Text&rdquo;</strong> or the <strong>&ldquo;1-Click Sync&rdquo;</strong> bookmarklet above to bypass login restrictions automatically.
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* LINK CONFIRMATION SCREEN */
+                        <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-3">
+                          <div className="flex items-center justify-between border-b border-indigo-200 dark:border-indigo-800 pb-2">
+                            <span className="text-xs font-black text-indigo-800 dark:text-indigo-200 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>LINK RECOGNIZED</span>
+                            </span>
+                            <button
+                              onClick={() => setExtractedSuccessData(null)}
+                              className="text-[11px] font-bold text-slate-500 hover:underline cursor-pointer"
+                            >
+                              Change Link
+                            </button>
+                          </div>
+
+                          <div className="space-y-1.5 text-xs font-semibold">
+                            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                              <span className="text-slate-500">Platform:</span>
+                              <span className="font-extrabold text-slate-900 dark:text-slate-100">
+                                {PLATFORMS[extractedSuccessData.detectedPlatform]?.name || "Testbook"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                              <span className="text-slate-500">Detected Exam:</span>
+                              <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
+                                {extractedSuccessData.detectedExam}
+                              </span>
+                            </div>
+                            {extractedSuccessData.title && (
+                              <div className="flex justify-between py-1 border-b border-slate-200/50 dark:border-slate-800">
+                                <span className="text-slate-500">Test Title:</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-200">
+                                  {extractedSuccessData.title}
+                                </span>
+                              </div>
+                            )}
+                            {!extractedSuccessData.requiresAuthScore && extractedSuccessData.score > 0 ? (
+                              <div className="flex justify-between py-1">
+                                <span className="text-slate-500">Score:</span>
+                                <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                                  {extractedSuccessData.score} / {extractedSuccessData.maxMarks} ({extractedSuccessData.pct}%)
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="py-2 space-y-2">
+                                <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium leading-tight">
+                                  🔒 Note: Testbook result pages require account login. Exam, platform &amp; test details have been auto-filled! Please enter your score:
+                                </p>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="number"
+                                    step="0.25"
+                                    placeholder={`Score out of ${extractedSuccessData.maxMarks}`}
+                                    value={scoreInput}
+                                    onChange={(e) => setScoreInput(e.target.value)}
+                                    className="flex-1 px-3 py-2 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 text-xs font-bold"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleQuickSave}
+                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-98"
+                          >
+                            SAVE MOCK
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* SUBTAB 2: PASTE SOLUTION HTML / TEXT (LOGIN BYPASS) */}
+                  {linkSubTab === "paste_html" && (
+                    <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900 space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                            Paste Authenticated Result Text / Table
+                          </label>
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            ✓ No Login Required
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+                          On your logged-in Testbook or Oliveboard scorecard tab, press <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[10px]">Ctrl+A</kbd> then <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[10px]">Ctrl+C</kbd>, and paste here:
+                        </p>
+                        <textarea
+                          rows={5}
+                          value={pastedHtmlText}
+                          onChange={(e) => setPastedHtmlText(e.target.value)}
+                          placeholder="Paste scorecard page contents or table text here... (e.g. Total Marks: 148/200, Reasoning: 45, Quantitative: 40...)"
+                          className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        />
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={handleQuickSave}
-                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-98"
-                      >
-                        SAVE MOCK
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleProcessPastedHtml}
+                          disabled={!pastedHtmlText.trim() || isProcessing}
+                          className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                        >
+                          {isProcessing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>AI Parsing Scorecard...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 text-amber-300" />
+                              <span>Auto-Extract All Metrics</span>
+                            </>
+                          )}
+                        </button>
+                        {pastedHtmlText && (
+                          <button
+                            type="button"
+                            onClick={() => setPastedHtmlText("")}
+                            className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUBTAB 3: 1-CLICK SYNC BOOKMARKLET (ZERO-CREDENTIAL AUTH) */}
+                  {linkSubTab === "bookmarklet" && (
+                    <div className="p-4 rounded-2xl border border-indigo-200 dark:border-indigo-900 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-3">
+                      <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-200">
+                        <Award className="w-5 h-5 text-indigo-600" />
+                        <h4 className="text-xs font-black uppercase tracking-wider">
+                          1-Click Browser Bookmarklet (Authenticated Sync)
+                        </h4>
+                      </div>
+
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        To parse scorecards that sit behind a login screen without giving away passwords, use this zero-credential Bookmarklet:
+                      </p>
+
+                      <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+                            Step 1: Save Bookmarklet
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleCopyBookmarklet}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                          >
+                            {bookmarkletCopied ? (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Copy Code</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Create a new bookmark in your browser named <strong>&ldquo;Sync with MockTrack&rdquo;</strong> and paste the copied snippet into its URL field.
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
+                        <span className="text-xs font-black text-slate-900 dark:text-slate-100 block">
+                          Step 2: Use On Test Results Page
+                        </span>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Whenever you are viewing a Testbook or Oliveboard test result, just click the bookmarklet! It securely transmits your score and section breakdown to MockTrack with zero typing.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   PlatformId,
   TestType,
@@ -23,10 +23,23 @@ import {
   Upload,
   Loader2,
   RefreshCw,
+  RotateCcw,
+  Wand2,
+  Trash2,
+  CheckCircle2,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { AppLogo } from "./AppLogo";
 import { HapticService } from "../services/HapticService";
+import { LogMockLiveHUD } from "./LogMockLiveHUD";
+import { LogMockQuestionCalculator } from "./LogMockQuestionCalculator";
+import { LogMockPercentileCalculator } from "./LogMockPercentileCalculator";
+import {
+  calculateLiveComparison,
+  calculateTimePacing,
+  analyzeSectionBreakdown,
+  autoGenerateTitle,
+} from "../utils/mockCalculator";
 
 interface LogMockScreenProps {
   activeExam: ExamProfile;
@@ -71,7 +84,7 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
   onNavigateTab,
   initialData,
 }) => {
-  const { t } = useTranslation();
+  useTranslation();
 
   // Workflow Selection State: "select" | "manual" | "link" | "screenshot"
   const [workflowMode, setWorkflowMode] = useState<"select" | "manual" | "link" | "screenshot">(
@@ -89,7 +102,7 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
     initialData?.platform || "testbook"
   );
   const [title, setTitle] = useState<string>(
-    initialData?.title || `${activeExam.shortCode || "Mock"} Test #${attempts.length + 1}`
+    initialData?.title || ""
   );
   const [testType, setTestType] = useState<TestType>(
     initialData?.testType || "Full Mock"
@@ -117,7 +130,7 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
     initialData?.unattemptedCount !== undefined ? String(initialData.unattemptedCount) : ""
   );
 
-  // Percentile & Rank
+  // Percentile, Rank & Time Spent
   const [percentile, setPercentile] = useState<string>(
     initialData?.percentile !== undefined ? String(initialData.percentile) : ""
   );
@@ -126,6 +139,9 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
   );
   const [totalCandidates, setTotalCandidates] = useState<string>(
     initialData?.totalCandidates !== undefined ? String(initialData.totalCandidates) : ""
+  );
+  const [timeSpent, setTimeSpent] = useState<string>(
+    initialData?.timeSpentMinutes !== undefined ? String(initialData.timeSpentMinutes) : ""
   );
 
   // Sections
@@ -179,6 +195,124 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
   const [notes, setNotes] = useState<string>(initialData?.notes || "");
   const [errorMsg, setErrorMsg] = useState<string>("");
 
+  // Draft state & Duplicate confirmation state
+  const [draftExists, setDraftExists] = useState<boolean>(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<MockAttempt | null>(null);
+
+  // Check draft on mount if not editing existing data
+  useEffect(() => {
+    if (!initialData) {
+      const saved = localStorage.getItem("mocktrack_screen_draft");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && (parsed.score || parsed.title || parsed.correctCount)) {
+            setDraftExists(true);
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    }
+  }, [initialData]);
+
+  // Set default title if empty
+  useEffect(() => {
+    if (!title && !initialData) {
+      const platformObj = PLATFORMS[platform];
+      const genTitle = autoGenerateTitle(
+        platform,
+        platformObj?.name || "Mock",
+        testType,
+        activeExam.shortCode || "Exam",
+        attempts,
+        activeExam.id
+      );
+      setTitle(genTitle);
+    }
+  }, [platform, testType, activeExam, attempts, initialData]);
+
+  // Autosave draft as user enters data
+  useEffect(() => {
+    if (!initialData && (score || correctCount || title)) {
+      const draftObj = {
+        platform,
+        title,
+        testType,
+        date,
+        score,
+        maxMarks,
+        correctCount,
+        incorrectCount,
+        unattemptedCount,
+        percentile,
+        rank,
+        totalCandidates,
+        timeSpent,
+        difficulty,
+        confidence,
+        weakAreas,
+        notes,
+      };
+      localStorage.setItem("mocktrack_screen_draft", JSON.stringify(draftObj));
+    }
+  }, [
+    platform,
+    title,
+    testType,
+    date,
+    score,
+    maxMarks,
+    correctCount,
+    incorrectCount,
+    unattemptedCount,
+    percentile,
+    rank,
+    totalCandidates,
+    timeSpent,
+    difficulty,
+    confidence,
+    weakAreas,
+    notes,
+    initialData,
+  ]);
+
+  const handleRestoreDraft = () => {
+    try {
+      const saved = localStorage.getItem("mocktrack_screen_draft");
+      if (saved) {
+        const d = JSON.parse(saved);
+        if (d.platform) setPlatform(d.platform);
+        if (d.title) setTitle(d.title);
+        if (d.testType) setTestType(d.testType);
+        if (d.date) setDate(d.date);
+        if (d.score) setScore(d.score);
+        if (d.maxMarks) setMaxMarks(d.maxMarks);
+        if (d.correctCount) setCorrectCount(d.correctCount);
+        if (d.incorrectCount) setIncorrectCount(d.incorrectCount);
+        if (d.unattemptedCount) setUnattemptedCount(d.unattemptedCount);
+        if (d.percentile) setPercentile(d.percentile);
+        if (d.rank) setRank(d.rank);
+        if (d.totalCandidates) setTotalCandidates(d.totalCandidates);
+        if (d.timeSpent) setTimeSpent(d.timeSpent);
+        if (d.difficulty) setDifficulty(d.difficulty);
+        if (d.confidence) setConfidence(d.confidence);
+        if (d.weakAreas) setWeakAreas(d.weakAreas);
+        if (d.notes) setNotes(d.notes);
+      }
+    } catch {
+      // Ignore
+    }
+    setDraftExists(false);
+    HapticService.selection();
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem("mocktrack_screen_draft");
+    setDraftExists(false);
+    HapticService.lightTap();
+  };
+
   // Populate extracted data into form
   const applyExtractedData = (extracted: any) => {
     if (extracted.platform) {
@@ -231,7 +365,6 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
       if (json.success && json.data) {
         applyExtractedData(json.data);
       } else {
-        // Resilient fallback parser
         const urlMatch = inputUrl.match(/attempt[Nn]o=(\d+)/i);
         const attNo = urlMatch ? urlMatch[1] : String(attempts.length + 1);
         applyExtractedData({
@@ -252,7 +385,6 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
         });
       }
     } catch {
-      // Fallback
       applyExtractedData({
         platform: "testbook",
         testTitle: `Extracted Online Mock Test`,
@@ -297,7 +429,6 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
       if (json.success && json.data) {
         applyExtractedData(json.data);
       } else {
-        // Resilient fallback parser
         applyExtractedData({
           platform: "testbook",
           testTitle: `Scorecard Mock #${attempts.length + 1}`,
@@ -331,6 +462,23 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
     }
   };
 
+  // SMART SCORE PARSER: Supports "145", "145/200", "145.5 / 200"
+  const handleScoreInputChange = (val: string) => {
+    setScore(val);
+    setErrorMsg("");
+    if (val.includes("/")) {
+      const parts = val.split("/");
+      const enteredScore = parts[0]?.trim();
+      const enteredTotal = parts[1]?.trim();
+      if (enteredScore && !isNaN(Number(enteredScore))) {
+        setScore(enteredScore);
+      }
+      if (enteredTotal && !isNaN(Number(enteredTotal))) {
+        setMaxMarks(enteredTotal);
+      }
+    }
+  };
+
   // Auto-fill total score from sections if user enters section scores
   const handleSectionScoreChange = (index: number, val: string) => {
     const updated = [...sections];
@@ -347,7 +495,12 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
     }
   };
 
-  // Calculations for preview
+  // Section Analysis (Auto-detects strongest, weakest, and auto-adds weak tags)
+  const sectionAnalysis = useMemo(() => {
+    return analyzeSectionBreakdown(sections);
+  }, [sections]);
+
+  // Calculations for live metrics
   const numScore = parseFloat(score) || 0;
   const numMaxMarks = parseFloat(maxMarks) || activeExam.totalMarks || 200;
   const numCorrect = parseInt(correctCount, 10) || 0;
@@ -358,6 +511,38 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
   const negativePenaltyRatio = activeExam.negativeMarkingRatio || 0.5;
   const negativeMarksLost =
     Math.round(numIncorrect * negativePenaltyRatio * 100) / 100;
+
+  // Time pacing
+  const numTimeSpent = parseInt(timeSpent, 10) || 0;
+  const pacingInfo = useMemo(() => {
+    return calculateTimePacing(numTimeSpent, attempted);
+  }, [numTimeSpent, attempted]);
+
+  // Live comparison with target and past mocks
+  const liveComparison = useMemo(() => {
+    return calculateLiveComparison(
+      numScore,
+      numMaxMarks,
+      attempts,
+      activeExam.id,
+      activeExam.targetScore
+    );
+  }, [numScore, numMaxMarks, attempts, activeExam]);
+
+  // Auto-generate title button handler
+  const handleAutoTitleClick = () => {
+    HapticService.lightTap();
+    const platformObj = PLATFORMS[platform];
+    const newTitle = autoGenerateTitle(
+      platform,
+      platformObj?.name || "Mock",
+      testType,
+      activeExam.shortCode || "Exam",
+      attempts,
+      activeExam.id
+    );
+    setTitle(newTitle);
+  };
 
   // Weak area suggestions
   const suggestedTags = [
@@ -390,8 +575,18 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
     }
   };
 
+  // 1-Click Auto-Add Weak Section to Tags
+  const handleAddWeakSectionTag = (secName: string) => {
+    HapticService.lightTap();
+    const tag = `${secName} (Low Section Score)`;
+    if (!weakAreas.includes(tag)) {
+      setWeakAreas([...weakAreas, tag]);
+    }
+    setIsWeakAreasExpanded(true);
+  };
+
   // Submit Handler
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, bypassDuplicateCheck = false) => {
     e.preventDefault();
     if (!score && score !== "0") {
       setErrorMsg("Please enter your score.");
@@ -403,6 +598,21 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
       setErrorMsg(`Score (${numScore}) cannot exceed Max Marks (${numMaxMarks}).`);
       HapticService.lightTap();
       return;
+    }
+
+    // Check duplicate mock (same exam, date, and score)
+    if (!bypassDuplicateCheck && !initialData) {
+      const existingMatch = attempts.find(
+        (a) =>
+          a.profileId === activeExam.id &&
+          a.date === date &&
+          Math.abs(a.score - numScore) < 0.05
+      );
+      if (existingMatch) {
+        setDuplicateWarning(existingMatch);
+        HapticService.lightTap();
+        return;
+      }
     }
 
     const structuredSections: SectionScore[] = sections
@@ -435,8 +645,12 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
       percentile: percentile ? parseFloat(percentile) : undefined,
       rank: rank ? parseInt(rank, 10) : undefined,
       totalCandidates: totalCandidates ? parseInt(totalCandidates, 10) : undefined,
+      timeSpentMinutes: numTimeSpent > 0 ? numTimeSpent : undefined,
       sections: structuredSections.length > 0 ? structuredSections : undefined,
     };
+
+    // Clear screen draft
+    localStorage.removeItem("mocktrack_screen_draft");
 
     onSaveMock(newAttempt);
     HapticService.success();
@@ -471,9 +685,41 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           </div>
         </div>
 
+        {/* Draft Restore Alert */}
+        {draftExists && (
+          <div className="p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2 min-w-0">
+              <RotateCcw className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 truncate">
+                Unsaved mock log draft found from earlier session
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  handleRestoreDraft();
+                  setWorkflowMode("manual");
+                }}
+                className="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-black hover:bg-indigo-700 cursor-pointer"
+              >
+                Restore
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                title="Discard"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 3 Workflow Choices: Manual | Link | Screenshot */}
-        <div className="grid grid-cols-1 gap-3.5 pt-2">
-          {/* Option 1: Manual Entry */}
+        <div className="grid grid-cols-1 gap-3.5 pt-1">
+          {/* Option 1: Manual Entry with Auto-Calculation */}
           <button
             type="button"
             onClick={() => {
@@ -486,11 +732,16 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
               <FileText className="w-6 h-6 stroke-[2]" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-black font-display text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                Manual Entry
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black font-display text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                  Manual Entry &amp; Auto-Compute
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[10px] font-black border border-indigo-200 dark:border-indigo-800">
+                  Advanced
+                </span>
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                Quickly type your score, platform, section breakdown, and accuracy.
+                Auto-calculate score from question counts, auto-derive percentiles, and auto-sum sections.
               </p>
             </div>
           </button>
@@ -648,75 +899,67 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
         </div>
 
         <div className="card-luminous rounded-2xl p-5 space-y-4">
-          <label className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-amber-400 rounded-2xl p-6 flex flex-col items-center justify-center gap-3 text-center cursor-pointer transition-colors bg-slate-50/50 dark:bg-slate-800/30">
+          <label className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-amber-500 transition-colors">
             {selectedImage ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <img
                   src={selectedImage}
                   alt="Selected Scorecard"
-                  className="max-h-48 rounded-xl mx-auto object-contain shadow-xs"
+                  className="max-h-48 rounded-xl object-contain mx-auto shadow-xs"
                 />
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 block">
-                  Click to choose different image
-                </span>
+                <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                  Tap to choose a different photo
+                </p>
               </div>
             ) : (
-              <>
-                <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                  <Camera className="w-6 h-6" />
+              <div className="space-y-2">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/80 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+                  <Upload className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="text-xs font-black text-slate-900 dark:text-slate-100 block">
-                    Upload or take photo of scorecard
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    Tap to upload scorecard screenshot
                   </span>
-                  <span className="text-[11px] text-slate-400">
-                    PNG, JPG or WebP (up to 10MB)
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    PNG, JPG, or WEBP from your device
                   </span>
                 </div>
-              </>
+              </div>
             )}
             <input
               type="file"
               accept="image/*"
-              onChange={handleImageSelect}
               className="hidden"
+              onChange={handleImageSelect}
             />
           </label>
 
-          <div className="flex items-center gap-3 pt-2">
+          {selectedImage && (
             <button
               type="button"
-              onClick={() => setWorkflowMode("select")}
-              className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              disabled={extracting || !selectedImage}
               onClick={handleExtractFromScreenshot}
-              className="flex-2 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer flex items-center justify-center gap-2"
+              disabled={extracting}
+              className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer flex items-center justify-center gap-2"
             >
               {extracting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Scanning Scorecard...</span>
+                  <span>Extracting Scorecard Data...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>Extract &amp; Populate Form</span>
+                  <span>Scan &amp; Auto-Fill Mock Details</span>
                 </>
               )}
             </button>
-          </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // STEP 3: MANUAL FORM (Also used after Link/Screenshot extraction for review & edit)
+  // STEP 3: MAIN ENHANCED MANUAL LOGGING FORM WITH AUTO-CALCULATORS
   return (
     <div className="max-w-2xl mx-auto pb-32 space-y-4 pt-1">
       {/* 1. TOP NAV HEADER BAR */}
@@ -745,7 +988,7 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-medium truncate">
-              Review and save your mock test details
+              Auto-calculations, precision tracking &amp; section analysis
             </p>
           </div>
         </div>
@@ -763,16 +1006,88 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
         </button>
       </div>
 
+      {/* Draft Restore Alert */}
+      {draftExists && (
+        <div className="p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-2 min-w-0">
+            <RotateCcw className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 truncate">
+              Restore previously typed draft?
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleRestoreDraft}
+              className="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-black hover:bg-indigo-700 cursor-pointer"
+            >
+              Restore
+            </button>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Warning Dialog / Alert */}
+      {duplicateWarning && (
+        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800 rounded-2xl space-y-2 animate-in fade-in">
+          <div className="flex items-start gap-2.5 text-amber-800 dark:text-amber-200">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-black">Duplicate Mock Warning</p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                A mock test ({duplicateWarning.title}) with the exact score ({duplicateWarning.score}) on date {date} already exists.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setDuplicateWarning(null)}
+              className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold cursor-pointer"
+            >
+              Review Details
+            </button>
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, true)}
+              className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-black cursor-pointer"
+            >
+              Log Duplicate Anyway
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Error Alert */}
       {errorMsg && (
-        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/80 rounded-2xl flex items-center gap-2.5 text-rose-700 dark:text-rose-300 text-xs font-bold">
+        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/80 rounded-2xl flex items-center gap-2.5 text-rose-700 dark:text-rose-300 text-xs font-bold animate-in fade-in">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* 2. PLATFORM & TITLE CARD (Requirement 10: Platform as clean dropdown) */}
+      {/* 2. LIVE PERFORMANCE INTELLIGENCE HUD */}
+      <LogMockLiveHUD
+        score={numScore}
+        maxMarks={numMaxMarks}
+        accuracy={calculatedAccuracy}
+        comparison={liveComparison}
+        targetScore={activeExam.targetScore}
+        examShortCode={activeExam.shortCode || "Exam"}
+        pacingInfo={pacingInfo}
+        strongestSection={sectionAnalysis.strongest}
+        weakestSection={sectionAnalysis.weakest}
+      />
+
+      <form onSubmit={(e) => handleSubmit(e)} className="space-y-4">
+        {/* 3. PLATFORM & TEST INFO CARD */}
         <div className="card-luminous rounded-2xl p-4 sm:p-5 space-y-3.5">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
             <span className="text-xs font-black font-display uppercase tracking-wider text-slate-400">
@@ -824,9 +1139,20 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           {/* Test Title & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                Mock Test Name / Number
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Mock Test Name / Number
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAutoTitleClick}
+                  className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  title="Auto-Generate Title based on sequence"
+                >
+                  <Wand2 className="w-3 h-3" />
+                  <span>Auto-Name</span>
+                </button>
+              </div>
               <input
                 type="text"
                 required
@@ -852,11 +1178,32 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           </div>
         </div>
 
-        {/* 3. SCORE & ACCURACY CARD */}
+        {/* 4. QUESTION COUNT & AUTO-CALCULATOR CARD */}
+        <LogMockQuestionCalculator
+          initialCorrect={correctCount}
+          initialIncorrect={incorrectCount}
+          initialTotalQuestions={Math.round((parseFloat(maxMarks) || 200) / (activeExam.negativeMarkingRatio === 0.25 ? 1 : 2)) || 100}
+          activeExamName={activeExam.name}
+          totalMarks={numMaxMarks}
+          currentScoreValue={score}
+          onApplyScore={(computedScore, computedAcc, c, i, s) => {
+            setScore(String(computedScore));
+            setCorrectCount(String(c));
+            setIncorrectCount(String(i));
+            setUnattemptedCount(String(s));
+          }}
+          onApplyQuestionCounts={(c, i, s) => {
+            setCorrectCount(String(c));
+            setIncorrectCount(String(i));
+            setUnattemptedCount(String(s));
+          }}
+        />
+
+        {/* 5. OVERALL SCORE & DIRECT INPUT CARD */}
         <div className="card-luminous rounded-2xl p-4 sm:p-5 space-y-3.5">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
             <span className="text-xs font-black font-display uppercase tracking-wider text-slate-400">
-              2. Score &amp; Accuracy
+              2. Score &amp; Penalty Summary
             </span>
             <div className="flex items-center gap-2">
               <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-display">
@@ -871,20 +1218,21 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           {/* Marks Scored & Max Marks */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="col-span-2 p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/80 dark:border-indigo-900/60">
-              <label className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider block mb-0.5 font-display">
-                Marks Scored *
-              </label>
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider font-display">
+                  Marks Scored *
+                </label>
+                <span className="text-[9px] text-indigo-500 font-bold">
+                  (Supports e.g. 145/200)
+                </span>
+              </div>
               <div className="flex items-baseline gap-2">
                 <input
-                  type="number"
-                  step="any"
+                  type="text"
                   required
                   placeholder="0"
                   value={score}
-                  onChange={(e) => {
-                    setScore(e.target.value);
-                    setErrorMsg("");
-                  }}
+                  onChange={(e) => handleScoreInputChange(e.target.value)}
                   className="w-full text-xl font-black font-display text-indigo-900 dark:text-indigo-100 bg-transparent border-b-2 border-indigo-300 dark:border-indigo-700 focus:outline-hidden focus:border-indigo-600"
                 />
                 <span className="text-xs font-bold text-indigo-400 font-sans">
@@ -964,7 +1312,22 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           </div>
         </div>
 
-        {/* 4. SUBJECT-WISE BREAKDOWN (Requirement 10: 2 subjects per row grid on mobile) */}
+        {/* 6. ADVANCED PERCENTILE, RANK & TIME PACING */}
+        <LogMockPercentileCalculator
+          percentile={percentile}
+          rank={rank}
+          totalCandidates={totalCandidates}
+          timeSpentMinutes={timeSpent}
+          questionsAttempted={attempted}
+          onUpdateRankPercentile={(p, r, t) => {
+            setPercentile(p);
+            setRank(r);
+            setTotalCandidates(t);
+          }}
+          onUpdateTimeSpent={(t) => setTimeSpent(t)}
+        />
+
+        {/* 7. SUBJECT-WISE BREAKDOWN (2 subjects per row grid) */}
         <div className="card-luminous rounded-2xl p-4 sm:p-5 space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
             <div>
@@ -972,9 +1335,15 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
                 3. Subject &amp; Sectional Breakdown
               </span>
               <span className="text-[10.5px] text-slate-400 font-medium">
-                2 subjects per row • Auto-sums total score
+                2 subjects per row • Auto-sums total score • Auto-detects weak sections
               </span>
             </div>
+
+            {sectionAnalysis.totalSectionScore > 0 && (
+              <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-black border border-indigo-200 dark:border-indigo-800 font-display">
+                Sum: {sectionAnalysis.totalSectionScore} / {sectionAnalysis.totalSectionMax}
+              </span>
+            )}
           </div>
 
           {/* 2 Subjects Per Row Grid */}
@@ -1024,9 +1393,29 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
               </div>
             ))}
           </div>
+
+          {/* Auto-detected Weak Section Pill with 1-click Add */}
+          {sectionAnalysis.weakest && sectionAnalysis.weakest.percentage < 65 && (
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-200 dark:border-amber-800/60 flex items-center justify-between gap-2 mt-2">
+              <div className="flex items-center gap-1.5 min-w-0 text-amber-800 dark:text-amber-200 text-xs">
+                <span className="font-bold">⚠️ Weak Section Detected:</span>
+                <span className="font-black truncate">{sectionAnalysis.weakest.name}</span>
+                <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                  ({sectionAnalysis.weakest.score}/{sectionAnalysis.weakest.maxMarks} • {sectionAnalysis.weakest.percentage}%)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAddWeakSectionTag(sectionAnalysis.weakest!.name)}
+                className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10.5px] font-black cursor-pointer shrink-0"
+              >
+                + Tag for Revision
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* 5. DIAGNOSTIC WEAK AREAS (Requirement 10: Collapsible, collapsed by default) */}
+        {/* 8. DIAGNOSTIC WEAK AREAS (Collapsible, collapsed by default) */}
         <div className="card-luminous rounded-2xl p-4 space-y-3">
           <button
             type="button"
@@ -1156,7 +1545,7 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           )}
         </div>
 
-        {/* 6. BOTTOM SAVE ACTIONS */}
+        {/* 9. BOTTOM SAVE ACTIONS */}
         <div className="pt-2 flex items-center gap-3">
           <button
             type="button"
