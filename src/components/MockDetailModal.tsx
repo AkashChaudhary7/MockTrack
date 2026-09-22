@@ -126,10 +126,10 @@ export const MockDetailModal: React.FC<MockDetailModalProps> = ({
                     {mock.date}
                   </span>
                   <span>•</span>
-                  <span>{platformInfo.name}</span>
+                  <span>{mock.customPlatformName || platformInfo.name}</span>
                   <span>•</span>
                   <span className="bg-white/15 px-2 py-0.5 rounded-md text-[10px] font-black">
-                    {mock.testType || "Full Mock"}
+                    {mock.customTestType || mock.testType || "Full Mock"}
                   </span>
                 </div>
               </div>

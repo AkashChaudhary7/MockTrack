@@ -32,9 +32,10 @@ export type MockDifficulty = "Easy" | "Moderate" | "Hard" | "Extreme" | "Very Ha
 export type MockConfidence = "Low" | "Medium" | "High" | "Very Confident" | "Confident" | "Average" | "Difficult" | "Very Difficult";
 
 export interface SectionScore {
-  name: string; // "Quantitative Aptitude" | "Reasoning Ability" | "English Comprehension" | "General Awareness"
+  name: string;
   score: number;
   maxMarks: number;
+  part?: string; // e.g. "Part A" | "Part B"
   correctCount?: number;
   incorrectCount?: number;
   unattemptedCount?: number;
@@ -75,8 +76,10 @@ export interface MockAttempt {
   id: string;
   profileId: string;
   platform: PlatformId;
+  customPlatformName?: string;
   title: string;
   testType: TestType;
+  customTestType?: string;
   score: number;
   maxMarks: number;
   correctCount: number;
@@ -97,10 +100,46 @@ export interface MockAttempt {
   timeSpentMinutes?: number;
 }
 
+export type ExamCategory =
+  | "UPSC"
+  | "SSC"
+  | "BANK"
+  | "DSSSB"
+  | "RPSC"
+  | "RSSB"
+  | "UPPCS"
+  | "UPSSSC"
+  | "STATE"
+  | "TEACHING"
+  | "DEFENCE"
+  | "RAILWAYS"
+  | "ENGINEERING"
+  | "MEDICAL"
+  | "CUSTOM"
+  | "OTHER";
+
+export interface ExamSubjectConfig {
+  id: string;
+  name: string;
+  maxMarks: number;
+  part?: string; // e.g. "Part A" | "Part B" | "Section 1"
+  questionCount?: number;
+  marksPerQuestion?: number;
+  negativeMarks?: number;
+}
+
+export interface ExamPartConfig {
+  id: string;
+  name: string; // e.g. "Part A (General Section)" | "Part B (Discipline Specific)"
+  totalMarks: number;
+}
+
 export interface ExamProfile {
   id: string;
   name: string; // e.g., "SSC CGL 2026 Tier-1"
   shortCode: string; // e.g., "SSC CGL"
+  category?: ExamCategory;
+  icon?: string; // e.g. "🦅", "🏦", "🏛️", "💻", "📜", "🎓", "🏰"
   totalMarks: number;
   targetScore?: number; // Target goal score e.g. 160 / 200
   defaultDurationMinutes: number;
@@ -109,6 +148,10 @@ export interface ExamProfile {
   isSelected: boolean;
   subjectGoals?: SubjectGoal[];
   syllabusProgress?: number; // e.g. 68%
+  isCustom?: boolean;
+  hasParts?: boolean;
+  parts?: ExamPartConfig[];
+  subjects?: ExamSubjectConfig[];
 }
 
 export interface PlatformInfo {

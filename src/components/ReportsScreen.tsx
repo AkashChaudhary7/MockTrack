@@ -20,6 +20,7 @@ import { useTranslation } from "../i18n/LanguageContext";
 import {
   generateBilingualReportHTML,
   downloadBilingualReportPDF,
+  downloadShareableSummaryGraphic,
   printPerformanceSummary,
 } from "../utils/pdfExport";
 import { HapticService } from "../services/HapticService";
@@ -41,6 +42,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
   const { t } = useTranslation();
   const [period, setPeriod] = useState<PeriodFilter>("all");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingGraphic, setIsGeneratingGraphic] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Filter attempts based on selected timeframe
@@ -68,6 +70,18 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
       HapticService.achievement();
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Handle Shareable Summary Graphic Download (PNG)
+  const handleDownloadGraphic = async () => {
+    HapticService.selection();
+    setIsGeneratingGraphic(true);
+    try {
+      downloadShareableSummaryGraphic(candidate, activeExam, filteredAttempts);
+      HapticService.achievement();
+    } finally {
+      setIsGeneratingGraphic(false);
     }
   };
 
@@ -164,6 +178,16 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
             >
               <Printer className="w-4 h-4 text-indigo-300" />
               <span>Print Summary</span>
+            </button>
+
+            <button
+              onClick={handleDownloadGraphic}
+              disabled={isGeneratingGraphic || filteredAttempts.length === 0}
+              className="px-4 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl border border-emerald-400/40 shadow-md shadow-emerald-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+              title="Download Shareable Summary Graphic with 3D doodles & Target Reached status"
+            >
+              <Award className="w-4 h-4 text-emerald-200" />
+              <span>{isGeneratingGraphic ? "Exporting..." : "Shareable Graphic (PNG)"}</span>
             </button>
 
             <button

@@ -610,6 +610,682 @@ export function printPerformanceSummary(
 }
 
 /**
+ * Helper to get clean initials for candidate avatar
+ */
+function getCandidateInitials(name: string): string {
+  if (!name || !name.trim()) return "AS";
+  const cleaned = name.trim().replace(/[^a-zA-Z\s]/g, "");
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  if (parts.length === 1 && parts[0].length >= 2) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  if (parts.length === 1) {
+    return parts[0][0].toUpperCase() + "T";
+  }
+  return "AS";
+}
+
+/**
+ * Draws rounded rectangle path on HTML5 2D canvas
+ */
+function drawCanvasRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/**
+ * Draws a 4-point golden sparkle on canvas
+ */
+function drawSparkle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  color: string = "#F59E0B"
+): void {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.quadraticCurveTo(cx, cy, cx + r, cy);
+  ctx.quadraticCurveTo(cx, cy, cx, cy + r);
+  ctx.quadraticCurveTo(cx, cy, cx - r, cy);
+  ctx.quadraticCurveTo(cx, cy, cx, cy - r);
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Draws handcrafted 3D Bullseye Target Doodle on canvas
+ */
+function draw3DTargetDoodle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number = 70
+): void {
+  ctx.save();
+  const s = size / 100;
+
+  // Ground cast shadow
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 38 * s, 36 * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(49, 46, 129, 0.25)";
+  ctx.fill();
+  ctx.restore();
+
+  // Outer ring beveled 3D rim
+  ctx.beginPath();
+  ctx.arc(cx, cy + 2 * s, 36 * s, 0, Math.PI * 2);
+  ctx.fillStyle = "#312E81";
+  ctx.fill();
+
+  const outerGrad = ctx.createRadialGradient(cx - 10 * s, cy - 10 * s, 4 * s, cx, cy, 36 * s);
+  outerGrad.addColorStop(0, "#818CF8");
+  outerGrad.addColorStop(0.5, "#6366F1");
+  outerGrad.addColorStop(1, "#4338CA");
+  ctx.beginPath();
+  ctx.arc(cx, cy, 36 * s, 0, Math.PI * 2);
+  ctx.fillStyle = outerGrad;
+  ctx.fill();
+
+  // White middle ring
+  const midGrad = ctx.createRadialGradient(cx - 8 * s, cy - 8 * s, 3 * s, cx, cy, 27 * s);
+  midGrad.addColorStop(0, "#FFFFFF");
+  midGrad.addColorStop(0.6, "#F1F5F9");
+  midGrad.addColorStop(1, "#CBD5E1");
+  ctx.beginPath();
+  ctx.arc(cx, cy, 27 * s, 0, Math.PI * 2);
+  ctx.fillStyle = midGrad;
+  ctx.fill();
+
+  // Red inner ring
+  const redGrad = ctx.createRadialGradient(cx - 6 * s, cy - 6 * s, 2 * s, cx, cy, 18 * s);
+  redGrad.addColorStop(0, "#F87171");
+  redGrad.addColorStop(0.5, "#EF4444");
+  redGrad.addColorStop(1, "#B91C1C");
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18 * s, 0, Math.PI * 2);
+  ctx.fillStyle = redGrad;
+  ctx.fill();
+
+  // Gold bullseye core
+  const goldGrad = ctx.createRadialGradient(cx - 3 * s, cy - 3 * s, 1 * s, cx, cy, 9 * s);
+  goldGrad.addColorStop(0, "#FDE047");
+  goldGrad.addColorStop(0.4, "#F59E0B");
+  goldGrad.addColorStop(1, "#D97706");
+  ctx.beginPath();
+  ctx.arc(cx, cy, 9 * s, 0, Math.PI * 2);
+  ctx.fillStyle = goldGrad;
+  ctx.fill();
+
+  // Gloss arc highlight
+  ctx.beginPath();
+  ctx.arc(cx, cy, 30 * s, -Math.PI * 0.75, -Math.PI * 0.25);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.lineWidth = 3 * s;
+  ctx.stroke();
+
+  // 3D Dart at angle
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-Math.PI / 4);
+  // Dart shaft
+  ctx.fillStyle = "#E2E8F0";
+  ctx.fillRect(-2 * s, -32 * s, 4 * s, 32 * s);
+  // Dart cyan wings
+  ctx.beginPath();
+  ctx.moveTo(0, -32 * s);
+  ctx.lineTo(-8 * s, -42 * s);
+  ctx.lineTo(0, -38 * s);
+  ctx.lineTo(8 * s, -42 * s);
+  ctx.closePath();
+  ctx.fillStyle = "#38BDF8";
+  ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/**
+ * Draws handcrafted 3D Golden Trophy Doodle on canvas
+ */
+function draw3DTrophyDoodle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number = 60
+): void {
+  ctx.save();
+  const s = size / 100;
+
+  // Base Pedestal
+  ctx.fillStyle = "#92400E";
+  ctx.fillRect(cx - 16 * s, cy + 22 * s, 32 * s, 10 * s);
+  const pedGrad = ctx.createLinearGradient(cx - 16 * s, cy + 20 * s, cx + 16 * s, cy + 28 * s);
+  pedGrad.addColorStop(0, "#F59E0B");
+  pedGrad.addColorStop(1, "#B45309");
+  ctx.fillStyle = pedGrad;
+  ctx.fillRect(cx - 14 * s, cy + 20 * s, 28 * s, 8 * s);
+
+  // Stem
+  ctx.fillStyle = "#D97706";
+  ctx.fillRect(cx - 4 * s, cy + 8 * s, 8 * s, 12 * s);
+
+  // Cup Bowl
+  const cupGrad = ctx.createRadialGradient(cx - 8 * s, cy - 10 * s, 3 * s, cx, cy, 22 * s);
+  cupGrad.addColorStop(0, "#FEF08A");
+  cupGrad.addColorStop(0.3, "#FBBF24");
+  cupGrad.addColorStop(0.8, "#F59E0B");
+  cupGrad.addColorStop(1, "#B45309");
+
+  ctx.beginPath();
+  ctx.moveTo(cx - 18 * s, cy - 16 * s);
+  ctx.quadraticCurveTo(cx - 20 * s, cy + 8 * s, cx, cy + 10 * s);
+  ctx.quadraticCurveTo(cx + 20 * s, cy + 8 * s, cx + 18 * s, cy - 16 * s);
+  ctx.closePath();
+  ctx.fillStyle = cupGrad;
+  ctx.fill();
+
+  // Cup handles
+  ctx.strokeStyle = "#F59E0B";
+  ctx.lineWidth = 3.5 * s;
+  ctx.beginPath();
+  ctx.arc(cx - 20 * s, cy - 4 * s, 7 * s, Math.PI * 0.4, Math.PI * 1.6);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx + 20 * s, cy - 4 * s, 7 * s, -Math.PI * 0.6, Math.PI * 0.6);
+  ctx.stroke();
+
+  // Sparkle on cup
+  drawSparkle(ctx, cx + 8 * s, cy - 8 * s, 6 * s, "#FFFFFF");
+
+  ctx.restore();
+}
+
+/**
+ * Draws handcrafted 3D Flame Doodle on canvas
+ */
+function draw3DFlameDoodle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number = 50
+): void {
+  ctx.save();
+  const s = size / 100;
+
+  // Outer Flame (Red-Orange)
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 24 * s);
+  ctx.bezierCurveTo(cx + 18 * s, cy - 10 * s, cx + 18 * s, cy + 18 * s, cx, cy + 22 * s);
+  ctx.bezierCurveTo(cx - 18 * s, cy + 18 * s, cx - 18 * s, cy - 10 * s, cx, cy - 24 * s);
+  ctx.closePath();
+  const outerFlame = ctx.createLinearGradient(cx, cy - 24 * s, cx, cy + 22 * s);
+  outerFlame.addColorStop(0, "#F87171");
+  outerFlame.addColorStop(0.4, "#F97316");
+  outerFlame.addColorStop(1, "#EA580C");
+  ctx.fillStyle = outerFlame;
+  ctx.fill();
+
+  // Middle Flame (Amber-Yellow)
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 12 * s);
+  ctx.bezierCurveTo(cx + 10 * s, cy - 2 * s, cx + 10 * s, cy + 14 * s, cx, cy + 18 * s);
+  ctx.bezierCurveTo(cx - 10 * s, cy + 14 * s, cx - 10 * s, cy - 2 * s, cx, cy - 12 * s);
+  ctx.closePath();
+  ctx.fillStyle = "#FBBF24";
+  ctx.fill();
+
+  // Inner Core (White-Hot)
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + 2 * s);
+  ctx.bezierCurveTo(cx + 4 * s, cy + 6 * s, cx + 4 * s, cy + 14 * s, cx, cy + 15 * s);
+  ctx.bezierCurveTo(cx - 4 * s, cy + 14 * s, cx - 4 * s, cy + 6 * s, cx, cy + 2 * s);
+  ctx.closePath();
+  ctx.fillStyle = "#FEF08A";
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Draws handcrafted 3D Shield Doodle on canvas
+ */
+function draw3DShieldDoodle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number = 50
+): void {
+  ctx.save();
+  const s = size / 100;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 20 * s);
+  ctx.lineTo(cx + 18 * s, cy - 12 * s);
+  ctx.quadraticCurveTo(cx + 18 * s, cy + 10 * s, cx, cy + 22 * s);
+  ctx.quadraticCurveTo(cx - 18 * s, cy + 10 * s, cx - 18 * s, cy - 12 * s);
+  ctx.closePath();
+
+  const shieldGrad = ctx.createLinearGradient(cx - 18 * s, cy - 20 * s, cx + 18 * s, cy + 22 * s);
+  shieldGrad.addColorStop(0, "#34D399");
+  shieldGrad.addColorStop(0.5, "#10B981");
+  shieldGrad.addColorStop(1, "#059669");
+  ctx.fillStyle = shieldGrad;
+  ctx.fill();
+
+  ctx.strokeStyle = "#A7F3D0";
+  ctx.lineWidth = 2.5 * s;
+  ctx.stroke();
+
+  // Checkmark in shield
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = 3.5 * s;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx - 7 * s, cy);
+  ctx.lineTo(cx - 2 * s, cy + 5 * s);
+  ctx.lineTo(cx + 8 * s, cy - 5 * s);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * Generates an official, high-resolution 'Shareable Summary' Graphic Canvas (1200 x 580)
+ * featuring custom 3D doodle branding, candidate initials, and a prominent 'TARGET REACHED' showcase.
+ */
+export function generateShareableSummaryCanvas(
+  candidate: CandidateProfile,
+  activeExam: ExamProfile,
+  attempts: MockAttempt[]
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  const width = 1200;
+  const height = 580;
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const analytics = calculateAnalytics(attempts, activeExam);
+  const initials = getCandidateInitials(candidate.name);
+
+  const fullMocks = attempts
+    .filter((a) => a.profileId === activeExam.id)
+    .filter((a) => a.testType === "Full Mock" || (!a.testType && a.maxMarks === activeExam.totalMarks));
+  const peakScore = analytics.peakScore;
+  const targetScore = activeExam.targetScore || Math.round(activeExam.totalMarks * 0.75);
+  const targetGap = Math.round((analytics.averageScore - targetScore) * 10) / 10;
+  const isTargetReached = (peakScore >= targetScore) || (analytics.averageScore >= targetScore);
+  const surplusMarks = peakScore >= targetScore ? Math.round((peakScore - targetScore) * 10) / 10 : 0;
+
+  // 1. WARM IVORY BACKGROUND (#FCFAF6)
+  ctx.fillStyle = "#FCFAF6";
+  ctx.fillRect(0, 0, width, height);
+
+  // Subtle decorative dot pattern in background
+  ctx.fillStyle = "rgba(226, 217, 200, 0.45)";
+  for (let x = 30; x < width; x += 36) {
+    for (let y = 30; y < height; y += 36) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Outer Handcrafted Ivory Border
+  ctx.strokeStyle = "#E2D9C8";
+  ctx.lineWidth = 3.5;
+  drawCanvasRoundedRect(ctx, 16, 16, width - 32, height - 32, 28);
+  ctx.stroke();
+
+  // Subtle Inner Accent Line
+  ctx.strokeStyle = "#F1EBE1";
+  ctx.lineWidth = 1.5;
+  drawCanvasRoundedRect(ctx, 24, 24, width - 48, height - 48, 22);
+  ctx.stroke();
+
+  // 2. 3D DOODLE BRANDING DECORATIONS
+  draw3DTargetDoodle(ctx, 1110, 78, 64);
+  drawSparkle(ctx, 1030, 52, 10, "#F59E0B");
+  drawSparkle(ctx, 1160, 126, 7, "#818CF8");
+  drawSparkle(ctx, 50, 48, 8, "#F59E0B");
+
+  // 3. HEADER & CANDIDATE IDENTITY
+  const contentX = 48;
+  const headerY = 44;
+
+  // MockTrack Logo Mark
+  ctx.save();
+  drawCanvasRoundedRect(ctx, contentX, headerY, 44, 44, 14);
+  const logoGrad = ctx.createLinearGradient(contentX, headerY, contentX + 44, headerY + 44);
+  logoGrad.addColorStop(0, "#312E81");
+  logoGrad.addColorStop(1, "#4338CA");
+  ctx.fillStyle = logoGrad;
+  ctx.fill();
+  ctx.strokeStyle = "#C7D2FE";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Inner logo target rings
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(contentX + 22, headerY + 22, 10, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "#F59E0B";
+  ctx.beginPath();
+  ctx.arc(contentX + 22, headerY + 22, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Brand Name & Subhead
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#1E1B4B";
+  ctx.font = "900 24px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText("MOCKTRACK", contentX + 56, headerY + 24);
+
+  ctx.fillStyle = "#64748B";
+  ctx.font = "700 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText("OFFICIAL CANDIDATE PERFORMANCE DOSSIER", contentX + 56, headerY + 38);
+  ctx.restore();
+
+  // Candidate Initials Avatar + Info Row
+  const candidateY = 102;
+  const avatarSize = 64;
+
+  // 3D Avatar Capsule
+  ctx.save();
+  drawCanvasRoundedRect(ctx, contentX, candidateY, avatarSize, avatarSize, 18);
+  const avGrad = ctx.createLinearGradient(contentX, candidateY, contentX + avatarSize, candidateY + avatarSize);
+  avGrad.addColorStop(0, "#312E81");
+  avGrad.addColorStop(1, "#4338CA");
+  ctx.fillStyle = avGrad;
+  ctx.fill();
+  ctx.strokeStyle = "#C7D2FE";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "900 28px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(initials, contentX + avatarSize / 2, candidateY + avatarSize / 2);
+  ctx.restore();
+
+  // Candidate Name + Exam Badge
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#0F172A";
+  ctx.font = "900 26px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText((candidate.name || "Aspirant").toUpperCase(), contentX + avatarSize + 18, candidateY + 28);
+
+  // Exam Tag
+  const examTag = `📚 Target Exam: ${activeExam.name} (${activeExam.shortCode})`;
+  ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  const examTagW = ctx.measureText(examTag).width + 20;
+  drawCanvasRoundedRect(ctx, contentX + avatarSize + 18, candidateY + 38, examTagW, 26, 8);
+  ctx.fillStyle = "#F1F5F9";
+  ctx.fill();
+  ctx.strokeStyle = "#CBD5E1";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = "#334155";
+  ctx.fillText(examTag, contentX + avatarSize + 28, candidateY + 55);
+  ctx.restore();
+
+  // 4. HIGHLIGHTED 'TARGET REACHED' HERO STATUS BANNER
+  const bannerY = 182;
+  const bannerW = width - contentX * 2;
+  const bannerH = 84;
+
+  ctx.save();
+  drawCanvasRoundedRect(ctx, contentX, bannerY, bannerW, bannerH, 20);
+
+  if (isTargetReached) {
+    // Celebration Emerald Gradient
+    const targetGrad = ctx.createLinearGradient(contentX, bannerY, contentX + bannerW, bannerY + bannerH);
+    targetGrad.addColorStop(0, "#065F46");
+    targetGrad.addColorStop(0.5, "#059669");
+    targetGrad.addColorStop(1, "#047857");
+    ctx.fillStyle = targetGrad;
+    ctx.fill();
+
+    ctx.strokeStyle = "#34D399";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // 3D Trophy on left
+    draw3DTrophyDoodle(ctx, contentX + 44, bannerY + bannerH / 2, 48);
+
+    // Main Text
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "900 23px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.textAlign = "left";
+    const titleText = surplusMarks > 0
+      ? `TARGET REACHED! (+${surplusMarks} MARKS SURPLUS OVER BENCHMARK)`
+      : `TARGET REACHED! (BENCHMARK CRITERIA MET)`;
+    ctx.fillText(`🎯 ${titleText}`, contentX + 80, bannerY + 36);
+
+    ctx.fillStyle = "#D1FAE5";
+    ctx.font = "700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(
+      `Required Cutoff Target: ${targetScore} / ${activeExam.totalMarks}   |   Peak Score: ${peakScore}   |   Status: Admission Qualified`,
+      contentX + 80,
+      bannerY + 60
+    );
+
+    // Decorative Sparkles on the right
+    drawSparkle(ctx, contentX + bannerW - 70, bannerY + 32, 10, "#FDE047");
+    drawSparkle(ctx, contentX + bannerW - 35, bannerY + 54, 7, "#FFFFFF");
+  } else {
+    // In-Progress Royal Indigo Gradient
+    const progGrad = ctx.createLinearGradient(contentX, bannerY, contentX + bannerW, bannerY + bannerH);
+    progGrad.addColorStop(0, "#312E81");
+    progGrad.addColorStop(0.5, "#4338CA");
+    progGrad.addColorStop(1, "#3730A3");
+    ctx.fillStyle = progGrad;
+    ctx.fill();
+
+    ctx.strokeStyle = "#818CF8";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // 3D Target on left
+    draw3DTargetDoodle(ctx, contentX + 44, bannerY + bannerH / 2, 44);
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "900 23px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(`🎯 TARGET BENCHMARK IN SIGHT (${targetScore} PTS GOAL)`, contentX + 80, bannerY + 36);
+
+    ctx.fillStyle = "#E0E7FF";
+    ctx.font = "700 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(
+      `Current Peak: ${peakScore} / ${activeExam.totalMarks}   |   Gap: ${Math.abs(targetGap)} Marks to Target Cutoff   |   Trajectory: Solid Upward Climb`,
+      contentX + 80,
+      bannerY + 60
+    );
+
+    draw3DFlameDoodle(ctx, contentX + bannerW - 50, bannerY + bannerH / 2, 44);
+  }
+  ctx.restore();
+
+  // 5. 4 CORE STAT CARDS (TACTILE 3D CARDS)
+  const cardsY = 286;
+  const cardGap = 16;
+  const cardW = (bannerW - cardGap * 3) / 4;
+  const cardH = 175;
+
+  const statCards = [
+    {
+      label: "PEAK BEST SCORE",
+      val: `${peakScore}`,
+      sub: `Target: ${targetScore}/${activeExam.totalMarks}`,
+      color: "#4338CA",
+      subColor: isTargetReached ? "#059669" : "#6366F1",
+      doodle: "trophy",
+    },
+    {
+      label: "OPERATIONAL AVERAGE",
+      val: `${analytics.averageScore}`,
+      sub: `${Math.round((analytics.averageScore / activeExam.totalMarks) * 100)}% Mean Score`,
+      color: "#0F172A",
+      subColor: "#0284C7",
+      doodle: "target",
+    },
+    {
+      label: "STRIKE ACCURACY",
+      val: `${analytics.overallAccuracy}%`,
+      sub: "Negative penalty shield",
+      color: "#059669",
+      subColor: "#059669",
+      doodle: "shield",
+    },
+    {
+      label: "MOCKS LOGGED",
+      val: `${analytics.totalMocks}`,
+      sub: `${fullMocks.length} Full Mocks logged`,
+      color: "#D97706",
+      subColor: "#D97706",
+      doodle: "flame",
+    },
+  ];
+
+  statCards.forEach((c, idx) => {
+    const cx = contentX + idx * (cardW + cardGap);
+
+    ctx.save();
+    // Card background & 3D bevel
+    drawCanvasRoundedRect(ctx, cx, cardsY, cardW, cardH, 18);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fill();
+    ctx.strokeStyle = "#E2E8F0";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Top decorative colored hairline
+    ctx.fillStyle = c.color;
+    drawCanvasRoundedRect(ctx, cx + 16, cardsY + 3, cardW - 32, 3, 1.5);
+    ctx.fill();
+
+    // Card Doodle Icon
+    if (c.doodle === "trophy") draw3DTrophyDoodle(ctx, cx + cardW - 32, cardsY + 34, 34);
+    if (c.doodle === "target") draw3DTargetDoodle(ctx, cx + cardW - 32, cardsY + 34, 30);
+    if (c.doodle === "shield") draw3DShieldDoodle(ctx, cx + cardW - 32, cardsY + 34, 30);
+    if (c.doodle === "flame") draw3DFlameDoodle(ctx, cx + cardW - 32, cardsY + 34, 32);
+
+    // Label
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#64748B";
+    ctx.font = "900 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(c.label, cx + 16, cardsY + 36);
+
+    // Big Number Value
+    ctx.fillStyle = c.color;
+    ctx.font = "900 38px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(c.val, cx + 16, cardsY + 98);
+
+    // Subtitle / context
+    ctx.fillStyle = c.subColor;
+    ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillText(c.sub, cx + 16, cardsY + 138);
+
+    ctx.restore();
+  });
+
+  // 6. FOOTER BAR WITH GOOGLE PLAY STORE BADGING
+  const footerY = 484;
+  const footerH = 50;
+
+  ctx.save();
+  drawCanvasRoundedRect(ctx, contentX, footerY, bannerW, footerH, 14);
+  ctx.fillStyle = "#F8FAFC";
+  ctx.fill();
+  ctx.strokeStyle = "#E2E8F0";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Google Play Icon Doodle
+  const gpX = contentX + 20;
+  const gpY = footerY + 25;
+  ctx.beginPath();
+  ctx.moveTo(gpX - 10, gpY - 11);
+  ctx.lineTo(gpX + 10, gpY);
+  ctx.lineTo(gpX - 10, gpY + 11);
+  ctx.closePath();
+  ctx.fillStyle = "#0284C7";
+  ctx.fill();
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#1E293B";
+  ctx.font = "900 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText("Download MockTrack : Mock Score Tracker from Google Play Store", gpX + 22, footerY + 24);
+
+  ctx.fillStyle = "#64748B";
+  ctx.font = "600 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText("Continuous Mock Performance Analytics • Offline & Private", gpX + 22, footerY + 40);
+
+  // Right Side Verified Stamp
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#4338CA";
+  ctx.font = "900 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText("OFFICIAL PERFORMANCE SUMMARY DOSSIER", contentX + bannerW - 16, footerY + 24);
+
+  ctx.fillStyle = "#10B981";
+  ctx.font = "700 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  ctx.fillText(`VERIFIED SECURE • ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`, contentX + bannerW - 16, footerY + 39);
+  ctx.restore();
+
+  return canvas;
+}
+
+/**
+ * Direct file download helper for standalone Shareable Summary Graphic (PNG)
+ */
+export function downloadShareableSummaryGraphic(
+  candidate: CandidateProfile,
+  activeExam: ExamProfile,
+  attempts: MockAttempt[]
+): void {
+  const canvas = generateShareableSummaryCanvas(candidate, activeExam, attempts);
+  const safeName = (candidate.name || "Aspirant").replace(/[^a-zA-Z0-9]/g, "_");
+  const safeExam = (activeExam.shortCode || activeExam.name).replace(/[^a-zA-Z0-9]/g, "_");
+  const link = document.createElement("a");
+  link.download = `MockTrack_${safeName}_${safeExam}_Shareable_Summary.png`;
+  link.href = canvas.toDataURL("image/png");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/**
  * Downloads a complete, multi-page professional PDF performance dossier
  * Containing:
  * - Executive metrics & target analysis
@@ -676,56 +1352,72 @@ export function downloadBilingualReportPDF(
   doc.setDrawColor(67, 56, 202);
   doc.line(marginX, y, marginX + contentWidth, y);
 
-  y += 8;
+  y += 6;
 
-  // 2. Executive 4-Card Performance Grid
-  const cardWidth = (contentWidth - 9) / 4; // ~43.25mm
-  const cardH = 18;
-  const cards = [
-    { label: "Total Mocks", val: `${analytics.totalMocks}`, sub: "Attempts logged" },
-    { label: "Average Score", val: `${analytics.averageScore} / ${activeExam.totalMarks}`, sub: `${Math.round((analytics.averageScore / activeExam.totalMarks) * 100)}% Mean` },
-    { label: "Peak Score", val: `${analytics.peakScore}`, sub: "Personal best" },
-    { label: "Overall Accuracy", val: `${analytics.overallAccuracy}%`, sub: "Strike precision" },
-  ];
+  // 2. Embed High-Resolution 'Shareable Summary' Graphic (with 3D Doodle Branding & Target Reached status)
+  let graphicRendered = false;
+  try {
+    if (typeof document !== "undefined") {
+      const summaryCanvas = generateShareableSummaryCanvas(candidate, activeExam, attempts);
+      const summaryDataUrl = summaryCanvas.toDataURL("image/png");
+      const summaryHeight = (contentWidth * summaryCanvas.height) / summaryCanvas.width;
+      doc.addImage(summaryDataUrl, "PNG", marginX, y, contentWidth, summaryHeight);
+      y += summaryHeight + 8;
+      graphicRendered = true;
+    }
+  } catch (err) {
+    console.warn("Failed to render canvas summary graphic into PDF, using vector fallback", err);
+  }
 
-  cards.forEach((c, idx) => {
-    const cx = marginX + idx * (cardWidth + 3);
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(cx, y, cardWidth, cardH, 2, 2, "FD");
+  // Vector Fallback if canvas was unavailable
+  if (!graphicRendered) {
+    const cardWidth = (contentWidth - 9) / 4;
+    const cardH = 18;
+    const cards = [
+      { label: "Total Mocks", val: `${analytics.totalMocks}`, sub: "Attempts logged" },
+      { label: "Average Score", val: `${analytics.averageScore} / ${activeExam.totalMarks}`, sub: `${Math.round((analytics.averageScore / activeExam.totalMarks) * 100)}% Mean` },
+      { label: "Peak Score", val: `${analytics.peakScore}`, sub: "Personal best" },
+      { label: "Overall Accuracy", val: `${analytics.overallAccuracy}%`, sub: "Strike precision" },
+    ];
 
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text(c.label.toUpperCase(), cx + 3, y + 4.5);
+    cards.forEach((c, idx) => {
+      const cx = marginX + idx * (cardWidth + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(cx, y, cardWidth, cardH, 2, 2, "FD");
 
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text(c.val, cx + 3, y + 11);
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(c.label.toUpperCase(), cx + 3, y + 4.5);
 
-    doc.setFontSize(6.5);
-    doc.setTextColor(16, 185, 129);
-    doc.text(c.sub, cx + 3, y + 15.5);
-  });
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text(c.val, cx + 3, y + 11);
 
-  y += cardH + 6;
+      doc.setFontSize(6.5);
+      doc.setTextColor(16, 185, 129);
+      doc.text(c.sub, cx + 3, y + 15.5);
+    });
 
-  // 3. Target & Benchmark Banner
-  const targetScore = activeExam.targetScore || 140;
-  const targetGap = Math.round((analytics.averageScore - targetScore) * 10) / 10;
-  const isTargetMet = targetGap >= 0;
+    y += cardH + 6;
 
-  doc.setFillColor(isTargetMet ? 240 : 254, isTargetMet ? 253 : 242, isTargetMet ? 244 : 242);
-  doc.setDrawColor(isTargetMet ? 187 : 254, isTargetMet ? 247 : 202, isTargetMet ? 208 : 202);
-  doc.roundedRect(marginX, y, contentWidth, 12, 2, 2, "FD");
+    const targetScore = activeExam.targetScore || 140;
+    const targetGap = Math.round((analytics.averageScore - targetScore) * 10) / 10;
+    const isTargetMet = targetGap >= 0;
 
-  doc.setFontSize(8.5);
-  doc.setTextColor(isTargetMet ? 22 : 153, isTargetMet ? 101 : 27, isTargetMet ? 52 : 27);
-  const targetText = isTargetMet
-    ? `Target Score: ${targetScore} / ${activeExam.totalMarks}   |   Current Status: TARGET ACHIEVED (+${targetGap} marks surplus)`
-    : `Target Score: ${targetScore} / ${activeExam.totalMarks}   |   Current Status: IN PROGRESS (${Math.abs(targetGap)} marks needed to reach target)`;
-  doc.text(targetText, marginX + 4, y + 7.5);
+    doc.setFillColor(isTargetMet ? 240 : 254, isTargetMet ? 253 : 242, isTargetMet ? 244 : 242);
+    doc.setDrawColor(isTargetMet ? 187 : 254, isTargetMet ? 247 : 202, isTargetMet ? 208 : 202);
+    doc.roundedRect(marginX, y, contentWidth, 12, 2, 2, "FD");
 
-  y += 17;
+    doc.setFontSize(8.5);
+    doc.setTextColor(isTargetMet ? 22 : 153, isTargetMet ? 101 : 27, isTargetMet ? 52 : 27);
+    const targetText = isTargetMet
+      ? `Target Score: ${targetScore} / ${activeExam.totalMarks}   |   Current Status: TARGET ACHIEVED (+${targetGap} marks surplus)`
+      : `Target Score: ${targetScore} / ${activeExam.totalMarks}   |   Current Status: IN PROGRESS (${Math.abs(targetGap)} marks needed to reach target)`;
+    doc.text(targetText, marginX + 4, y + 7.5);
+
+    y += 17;
+  }
 
   // 4. Comparative Analysis Section
   doc.setFontSize(11);

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { NavTab } from "../types";
 import {
   LayoutDashboard,
@@ -6,6 +6,9 @@ import {
   LineChart,
   Plus,
   User,
+  FileText,
+  Link as LinkIcon,
+  Camera,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { HapticService } from "../services/HapticService";
@@ -14,23 +17,35 @@ interface BottomNavProps {
   activeTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   onOpenLogModal?: () => void;
+  onSelectLogWorkflow?: (workflow: "manual" | "link" | "screenshot") => void;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
   onSelectTab,
   onOpenLogModal,
+  onSelectLogWorkflow,
 }) => {
   const { t } = useTranslation();
+  const [isLogMenuOpen, setIsLogMenuOpen] = useState(false);
 
   const handleTabClick = (tab: NavTab) => {
+    setIsLogMenuOpen(false);
     HapticService.lightTap();
     onSelectTab(tab);
   };
 
   const handleLogClick = () => {
     HapticService.selection();
-    if (onOpenLogModal) {
+    setIsLogMenuOpen((prev) => !prev);
+  };
+
+  const handleSelectOption = (workflow: "manual" | "link" | "screenshot") => {
+    HapticService.selection();
+    setIsLogMenuOpen(false);
+    if (onSelectLogWorkflow) {
+      onSelectLogWorkflow(workflow);
+    } else if (onOpenLogModal) {
       onOpenLogModal();
     } else {
       onSelectTab("log");
@@ -38,10 +53,72 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 sm:pb-4 pt-1 pointer-events-none flex justify-center">
-      <div className="w-full max-w-[360px] relative pointer-events-auto select-none">
-        
-        {/* Compact, Ultra-Sharp Scooped Floating Dock */}
+    <>
+      {/* Semi-transparent Backdrop to dismiss the floating options */}
+      {isLogMenuOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/20 dark:bg-black/40 backdrop-blur-xs transition-opacity duration-200"
+          onClick={() => {
+            HapticService.lightTap();
+            setIsLogMenuOpen(false);
+          }}
+        />
+      )}
+
+      <nav className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 sm:pb-4 pt-1 pointer-events-none flex justify-center">
+        <div className="w-full max-w-[360px] relative pointer-events-auto select-none">
+          
+          {/* 3 Small Floating Options for Manual, Link, and Screenshot */}
+          {isLogMenuOpen && (
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-[72px] z-50 flex items-center justify-center gap-3.5 p-2.5 px-4 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-800 shadow-[0_12px_32px_rgba(15,23,42,0.18)] dark:shadow-[0_16px_36px_rgba(0,0,0,0.65)] animate-in fade-in zoom-in-95 duration-150">
+              {/* Option 1: Manual */}
+              <button
+                type="button"
+                onClick={() => handleSelectOption("manual")}
+                className="flex flex-col items-center gap-1 group cursor-pointer active:scale-90 transition-transform"
+                title="Manual Entry & Auto-Compute"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/25 group-hover:scale-110 transition-transform">
+                  <FileText className="w-4.5 h-4.5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-black tracking-tight text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                  Manual
+                </span>
+              </button>
+
+              {/* Option 2: Link */}
+              <button
+                type="button"
+                onClick={() => handleSelectOption("link")}
+                className="flex flex-col items-center gap-1 group cursor-pointer active:scale-90 transition-transform"
+                title="Scorecard Link"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/25 group-hover:scale-110 transition-transform">
+                  <LinkIcon className="w-4.5 h-4.5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-black tracking-tight text-slate-700 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                  Link
+                </span>
+              </button>
+
+              {/* Option 3: Screenshot */}
+              <button
+                type="button"
+                onClick={() => handleSelectOption("screenshot")}
+                className="flex flex-col items-center gap-1 group cursor-pointer active:scale-90 transition-transform"
+                title="Scorecard Screenshot"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center shadow-md shadow-amber-500/25 group-hover:scale-110 transition-transform">
+                  <Camera className="w-4.5 h-4.5 stroke-[2.2]" />
+                </div>
+                <span className="text-[10px] font-black tracking-tight text-slate-700 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                  Screenshot
+                </span>
+              </button>
+            </div>
+          )}
+
+          {/* Compact, Ultra-Sharp Scooped Floating Dock */}
         <div className="relative w-full h-[58px] drop-shadow-[0_10px_25px_rgba(15,23,42,0.10)] dark:drop-shadow-[0_14px_30px_rgba(0,0,0,0.65)]">
           <svg
             viewBox="0 0 360 58"
@@ -202,14 +279,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                     activeTab === "log" ? "ring-indigo-400 dark:ring-indigo-400 scale-105" : ""
                   }`}
                 >
-                  <Plus className="w-5 h-5 stroke-[3] text-white drop-shadow-xs transition-transform duration-200 group-hover:rotate-90" />
+                  <Plus
+                    className={`w-5 h-5 stroke-[3] text-white drop-shadow-xs transition-transform duration-200 ${
+                      isLogMenuOpen ? "rotate-45" : "group-hover:rotate-90"
+                    }`}
+                  />
                 </div>
               </div>
 
               {/* Micro Label directly inside clickable button */}
               <span
                 className={`text-[9.5px] font-black mt-1 tracking-tight whitespace-nowrap leading-none transition-colors ${
-                  activeTab === "log"
+                  activeTab === "log" || isLogMenuOpen
                     ? "text-indigo-600 dark:text-indigo-400"
                     : "text-slate-500 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300"
                 }`}
@@ -221,5 +302,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </div>
       </div>
     </nav>
+    </>
   );
 };

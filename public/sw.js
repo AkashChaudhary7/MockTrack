@@ -1,5 +1,5 @@
-const STATIC_CACHE_NAME = 'mocktrack-static-v3';
-const DATA_CACHE_NAME = 'mocktrack-data-v3';
+const STATIC_CACHE_NAME = 'mocktrack-static-v5';
+const DATA_CACHE_NAME = 'mocktrack-data-v5';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -43,13 +43,22 @@ self.addEventListener('activate', (event) => {
 // Helper function to check if request is for a static asset
 function isStaticAsset(url, request) {
   const path = url.pathname;
-  if (/\.(png|jpg|jpeg|svg|gif|webp|ico|css|js|woff|woff2|ttf|otf|eot|map|json)$/i.test(path)) {
+  // NEVER cache dev files, vite dependencies, node_modules, or hot module updates
+  if (
+    path.includes('/node_modules/') ||
+    path.includes('/src/') ||
+    path.includes('@') ||
+    url.search.includes('v=') ||
+    path.endsWith('.tsx') ||
+    path.endsWith('.ts')
+  ) {
+    return false;
+  }
+  // Only cache production hashed assets or static images/fonts
+  if (path.startsWith('/assets/') && /\.(js|css)$/i.test(path)) {
     return true;
   }
-  if (path.startsWith('/assets/')) {
-    return true;
-  }
-  if (['style', 'script', 'image', 'font'].includes(request.destination)) {
+  if (/\.(png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|otf|eot)$/i.test(path)) {
     return true;
   }
   return false;

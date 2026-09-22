@@ -437,13 +437,13 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                       <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 truncate">
                         {mock.title}
                       </h4>
-                      <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 mt-0.5">
-                        <span className="capitalize">{platformInfo.name}</span>
+                      <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 mt-0.5 flex-wrap">
+                        <span className="capitalize">{mock.customPlatformName || platformInfo.name}</span>
                         <span>•</span>
                         <span className="tabular-nums">{mock.date}</span>
                         <span>•</span>
                         <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md font-bold text-slate-600 dark:text-slate-400">
-                          {mock.testType}
+                          {mock.customTestType || mock.testType}
                         </span>
                       </div>
                     </div>

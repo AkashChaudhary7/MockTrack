@@ -27,11 +27,11 @@ import {
   Wand2,
   Trash2,
   CheckCircle2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { AppLogo } from "./AppLogo";
 import { HapticService } from "../services/HapticService";
-import { LogMockLiveHUD } from "./LogMockLiveHUD";
 import { LogMockQuestionCalculator } from "./LogMockQuestionCalculator";
 import { LogMockPercentileCalculator } from "./LogMockPercentileCalculator";
 import {
@@ -40,6 +40,7 @@ import {
   analyzeSectionBreakdown,
   autoGenerateTitle,
 } from "../utils/mockCalculator";
+import { getSubjectsForProfile } from "../data/allExamsCatalog";
 
 interface LogMockScreenProps {
   activeExam: ExamProfile;
@@ -47,6 +48,7 @@ interface LogMockScreenProps {
   onSaveMock: (attempt: Omit<MockAttempt, "id">) => void;
   onNavigateTab: (tab: NavTab) => void;
   initialData?: Partial<MockAttempt>;
+  initialWorkflowMode?: "select" | "manual" | "link" | "screenshot";
   onOpenOcrModal?: (tab: "image" | "link") => void;
 }
 
@@ -55,6 +57,7 @@ interface SectionRow {
   name: string;
   score: string;
   maxMarks: string;
+  part?: string;
   correctCount: string;
   incorrectCount: string;
 }
@@ -83,13 +86,20 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
   onSaveMock,
   onNavigateTab,
   initialData,
+  initialWorkflowMode,
 }) => {
   useTranslation();
 
   // Workflow Selection State: "select" | "manual" | "link" | "screenshot"
   const [workflowMode, setWorkflowMode] = useState<"select" | "manual" | "link" | "screenshot">(
-    initialData ? "manual" : "select"
+    initialWorkflowMode || (initialData ? "manual" : "select")
   );
+
+  useEffect(() => {
+    if (initialWorkflowMode) {
+      setWorkflowMode(initialWorkflowMode);
+    }
+  }, [initialWorkflowMode]);
 
   // Link & Screenshot Extraction States
   const [inputUrl, setInputUrl] = useState<string>("");
@@ -101,11 +111,32 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
   const [platform, setPlatform] = useState<PlatformId>(
     initialData?.platform || "testbook"
   );
+  const [customPlatformName, setCustomPlatformName] = useState<string>(
+    initialData?.customPlatformName || ""
+  );
   const [title, setTitle] = useState<string>(
     initialData?.title || ""
   );
-  const [testType, setTestType] = useState<TestType>(
-    initialData?.testType || "Full Mock"
+
+  const STANDARD_TEST_TYPES = [
+    "Full Mock",
+    "Sectional",
+    "Topic/Chapter Test",
+    "Previous Year Paper",
+    "Practice Test",
+  ];
+  const isInitialStandard = STANDARD_TEST_TYPES.includes(initialData?.testType || "");
+
+  const [testType, setTestType] = useState<string>(
+    initialData?.testType
+      ? isInitialStandard
+        ? initialData.testType
+        : "Custom"
+      : "Full Mock"
+  );
+  const [customTestType, setCustomTestType] = useState<string>(
+    initialData?.customTestType ||
+      (!isInitialStandard && initialData?.testType ? initialData.testType : "")
   );
   const [date, setDate] = useState<string>(
     initialData?.date || new Date().toISOString().split("T")[0]
@@ -152,31 +183,47 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
         name: s.name,
         score: String(s.score),
         maxMarks: String(s.maxMarks),
+        part: s.part,
         correctCount: s.correctCount !== undefined ? String(s.correctCount) : "",
         incorrectCount: s.incorrectCount !== undefined ? String(s.incorrectCount) : "",
       }));
     }
 
-    const examCode = (activeExam.shortCode || activeExam.name || "").toLowerCase();
-    let secNames = DEFAULT_SECTIONS_MAP.ssc;
-    if (examCode.includes("bank")) secNames = DEFAULT_SECTIONS_MAP.bank;
-    else if (examCode.includes("jee")) secNames = DEFAULT_SECTIONS_MAP.jee;
-    else if (examCode.includes("neet")) secNames = DEFAULT_SECTIONS_MAP.neet;
-    else if (examCode.includes("upsc")) secNames = DEFAULT_SECTIONS_MAP.upsc;
-
-    const defMax = Math.round((activeExam.totalMarks || 200) / secNames.length);
-
-    return secNames.map((name, idx) => ({
-      id: `sec-${idx}`,
-      name,
+    const profileSubjects = getSubjectsForProfile(activeExam);
+    return profileSubjects.map((sub, idx) => ({
+      id: `sec-${idx}-${sub.id || idx}`,
+      name: sub.name,
       score: "",
-      maxMarks: String(defMax),
+      maxMarks: String(sub.maxMarks),
+      part: sub.part,
       correctCount: "",
       incorrectCount: "",
     }));
   };
 
   const [sections, setSections] = useState<SectionRow[]>(getInitialSections);
+
+  // Sync sections if active exam changes and user hasn't typed in custom data
+  useEffect(() => {
+    if (!initialData) {
+      const hasScores = sections.some((s) => s.score.trim() !== "");
+      if (!hasScores) {
+        const profileSubjects = getSubjectsForProfile(activeExam);
+        setSections(
+          profileSubjects.map((sub, idx) => ({
+            id: `sec-${idx}-${sub.id || idx}`,
+            name: sub.name,
+            score: "",
+            maxMarks: String(sub.maxMarks),
+            part: sub.part,
+            correctCount: "",
+            incorrectCount: "",
+          }))
+        );
+        setMaxMarks(String(activeExam.totalMarks || 200));
+      }
+    }
+  }, [activeExam.id]);
 
   // Diagnostic Weak Areas: Collapsed by default
   const [isWeakAreasExpanded, setIsWeakAreasExpanded] = useState<boolean>(false);
@@ -237,8 +284,10 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
     if (!initialData && (score || correctCount || title)) {
       const draftObj = {
         platform,
+        customPlatformName,
         title,
         testType,
+        customTestType,
         date,
         score,
         maxMarks,
@@ -258,8 +307,10 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
     }
   }, [
     platform,
+    customPlatformName,
     title,
     testType,
+    customTestType,
     date,
     score,
     maxMarks,
@@ -283,8 +334,10 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
       if (saved) {
         const d = JSON.parse(saved);
         if (d.platform) setPlatform(d.platform);
+        if (d.customPlatformName) setCustomPlatformName(d.customPlatformName);
         if (d.title) setTitle(d.title);
         if (d.testType) setTestType(d.testType);
+        if (d.customTestType) setCustomTestType(d.customTestType);
         if (d.date) setDate(d.date);
         if (d.score) setScore(d.score);
         if (d.maxMarks) setMaxMarks(d.maxMarks);
@@ -621,15 +674,28 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
         name: s.name,
         score: parseFloat(s.score) || 0,
         maxMarks: parseFloat(s.maxMarks) || 50,
+        part: s.part,
         correctCount: s.correctCount ? parseInt(s.correctCount, 10) : undefined,
         incorrectCount: s.incorrectCount ? parseInt(s.incorrectCount, 10) : undefined,
       }));
 
+    const finalTestType =
+      testType === "Custom"
+        ? (customTestType.trim() || "Custom")
+        : testType;
+
+    const isCustomPlatform = ["other", "offline", "pdf", "coaching"].includes(platform);
+
     const newAttempt: Omit<MockAttempt, "id"> = {
       profileId: activeExam.id,
       platform,
+      customPlatformName:
+        isCustomPlatform && customPlatformName.trim()
+          ? customPlatformName.trim()
+          : undefined,
       title: title.trim() || `${activeExam.shortCode || "Mock"} Test`,
-      testType,
+      testType: finalTestType as TestType,
+      customTestType: testType === "Custom" ? customTestType.trim() : undefined,
       score: numScore,
       maxMarks: numMaxMarks,
       correctCount: numCorrect,
@@ -993,16 +1059,18 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           </div>
         </div>
 
-        {/* Change Method Button */}
+        {/* Change Method Icon Button */}
         <button
           type="button"
           onClick={() => {
             HapticService.lightTap();
             setWorkflowMode("select");
           }}
-          className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer shrink-0"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs cursor-pointer flex items-center justify-center shrink-0 active:scale-95 group"
+          title="Change Logging Method"
+          aria-label="Change Logging Method"
         >
-          Change Method
+          <SlidersHorizontal className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.2] group-hover:rotate-180 transition-transform duration-300" />
         </button>
       </div>
 
@@ -1073,21 +1141,8 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
         </div>
       )}
 
-      {/* 2. LIVE PERFORMANCE INTELLIGENCE HUD */}
-      <LogMockLiveHUD
-        score={numScore}
-        maxMarks={numMaxMarks}
-        accuracy={calculatedAccuracy}
-        comparison={liveComparison}
-        targetScore={activeExam.targetScore}
-        examShortCode={activeExam.shortCode || "Exam"}
-        pacingInfo={pacingInfo}
-        strongestSection={sectionAnalysis.strongest}
-        weakestSection={sectionAnalysis.weakest}
-      />
-
       <form onSubmit={(e) => handleSubmit(e)} className="space-y-4">
-        {/* 3. PLATFORM & TEST INFO CARD */}
+        {/* 1. PLATFORM & TEST INFO CARD */}
         <div className="card-luminous rounded-2xl p-4 sm:p-5 space-y-3.5">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
             <span className="text-xs font-black font-display uppercase tracking-wider text-slate-400">
@@ -1099,7 +1154,7 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Clean Platform Dropdown */}
+            {/* Clean Platform Dropdown with Conditional Other input */}
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
                 Test Platform
@@ -1115,16 +1170,32 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
                   </option>
                 ))}
               </select>
+
+              {/* Conditional Other Text box to enter test platform name */}
+              {["other", "offline", "pdf", "coaching"].includes(platform) && (
+                <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    Specify Test Platform / Institute Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={customPlatformName}
+                    onChange={(e) => setCustomPlatformName(e.target.value)}
+                    placeholder="e.g. Allen Kota, Paramount, Offline PDF..."
+                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-700 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Clean Test Type Dropdown */}
+            {/* Clean Test Type Dropdown with Custom option */}
             <div>
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
                 Test Type
               </label>
               <select
                 value={testType}
-                onChange={(e) => setTestType(e.target.value as TestType)}
+                onChange={(e) => setTestType(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-hidden cursor-pointer"
               >
                 <option value="Full Mock">Full Mock</option>
@@ -1132,7 +1203,24 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
                 <option value="Topic/Chapter Test">Topic/Chapter Test</option>
                 <option value="Previous Year Paper">Previous Year Paper</option>
                 <option value="Practice Test">Practice Test</option>
+                <option value="Custom">Custom / Other Type...</option>
               </select>
+
+              {/* Conditional Other Text box for Custom Test Type */}
+              {testType === "Custom" && (
+                <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    Enter Custom Test Type Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={customTestType}
+                    onChange={(e) => setCustomTestType(e.target.value)}
+                    placeholder="e.g. Speed Drill, Mini Mock, Diagnostic..."
+                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-700 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -1178,141 +1266,24 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           </div>
         </div>
 
-        {/* 4. QUESTION COUNT & AUTO-CALCULATOR CARD */}
+        {/* 2. BEAUTIFULLY MERGED QUESTION COUNT, SCORE, ACCURACY & PENALTY SUMMARY CARD */}
         <LogMockQuestionCalculator
-          initialCorrect={correctCount}
-          initialIncorrect={incorrectCount}
-          initialTotalQuestions={Math.round((parseFloat(maxMarks) || 200) / (activeExam.negativeMarkingRatio === 0.25 ? 1 : 2)) || 100}
-          activeExamName={activeExam.name}
-          totalMarks={numMaxMarks}
-          currentScoreValue={score}
-          onApplyScore={(computedScore, computedAcc, c, i, s) => {
-            setScore(String(computedScore));
-            setCorrectCount(String(c));
-            setIncorrectCount(String(i));
-            setUnattemptedCount(String(s));
-          }}
-          onApplyQuestionCounts={(c, i, s) => {
-            setCorrectCount(String(c));
-            setIncorrectCount(String(i));
-            setUnattemptedCount(String(s));
-          }}
+          score={score}
+          onScoreChange={handleScoreInputChange}
+          maxMarks={maxMarks}
+          onMaxMarksChange={setMaxMarks}
+          percentile={percentile}
+          onPercentileChange={setPercentile}
+          correctCount={correctCount}
+          onCorrectCountChange={setCorrectCount}
+          incorrectCount={incorrectCount}
+          onIncorrectCountChange={setIncorrectCount}
+          unattemptedCount={unattemptedCount}
+          onUnattemptedCountChange={setUnattemptedCount}
+          activeExam={activeExam}
         />
 
-        {/* 5. OVERALL SCORE & DIRECT INPUT CARD */}
-        <div className="card-luminous rounded-2xl p-4 sm:p-5 space-y-3.5">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
-            <span className="text-xs font-black font-display uppercase tracking-wider text-slate-400">
-              2. Score &amp; Penalty Summary
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-display">
-                Accuracy: {calculatedAccuracy}%
-              </span>
-              <span className="text-xs font-bold text-rose-500 font-display">
-                Penalty: -{negativeMarksLost}
-              </span>
-            </div>
-          </div>
-
-          {/* Marks Scored & Max Marks */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="col-span-2 p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/80 dark:border-indigo-900/60">
-              <div className="flex items-center justify-between mb-0.5">
-                <label className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider font-display">
-                  Marks Scored *
-                </label>
-                <span className="text-[9px] text-indigo-500 font-bold">
-                  (Supports e.g. 145/200)
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <input
-                  type="text"
-                  required
-                  placeholder="0"
-                  value={score}
-                  onChange={(e) => handleScoreInputChange(e.target.value)}
-                  className="w-full text-xl font-black font-display text-indigo-900 dark:text-indigo-100 bg-transparent border-b-2 border-indigo-300 dark:border-indigo-700 focus:outline-hidden focus:border-indigo-600"
-                />
-                <span className="text-xs font-bold text-indigo-400 font-sans">
-                  / {maxMarks}
-                </span>
-              </div>
-            </div>
-
-            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-                Max Marks
-              </label>
-              <input
-                type="number"
-                step="any"
-                value={maxMarks}
-                onChange={(e) => setMaxMarks(e.target.value)}
-                className="w-full text-base font-black font-display text-slate-800 dark:text-slate-200 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:outline-hidden"
-              />
-            </div>
-
-            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-                Percentile %
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="e.g. 94.5"
-                value={percentile}
-                onChange={(e) => setPercentile(e.target.value)}
-                className="w-full text-base font-black font-display text-slate-800 dark:text-slate-200 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:outline-hidden"
-              />
-            </div>
-          </div>
-
-          {/* Question Breakdown: Correct, Incorrect, Skipped */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="p-2.5 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/70 dark:border-emerald-900/50">
-              <label className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 uppercase block mb-0.5">
-                ✓ Correct
-              </label>
-              <input
-                type="number"
-                placeholder="0"
-                value={correctCount}
-                onChange={(e) => setCorrectCount(e.target.value)}
-                className="w-full text-base font-black font-display text-emerald-900 dark:text-emerald-100 bg-transparent border-b border-emerald-300 dark:border-emerald-700 focus:outline-hidden"
-              />
-            </div>
-
-            <div className="p-2.5 bg-rose-50/70 dark:bg-rose-950/30 rounded-xl border border-rose-200/70 dark:border-rose-900/50">
-              <label className="text-[10px] font-black text-rose-700 dark:text-rose-300 uppercase block mb-0.5">
-                ✗ Incorrect
-              </label>
-              <input
-                type="number"
-                placeholder="0"
-                value={incorrectCount}
-                onChange={(e) => setIncorrectCount(e.target.value)}
-                className="w-full text-base font-black font-display text-rose-900 dark:text-rose-100 bg-transparent border-b border-rose-300 dark:border-rose-700 focus:outline-hidden"
-              />
-            </div>
-
-            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-              <label className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase block mb-0.5">
-                - Skipped
-              </label>
-              <input
-                type="number"
-                placeholder="0"
-                value={unattemptedCount}
-                onChange={(e) => setUnattemptedCount(e.target.value)}
-                className="w-full text-base font-black font-display text-slate-800 dark:text-slate-200 bg-transparent border-b border-slate-300 dark:border-slate-600 focus:outline-hidden"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 6. ADVANCED PERCENTILE, RANK & TIME PACING */}
+        {/* 3. ADVANCED PERCENTILE, RANK & TIME PACING */}
         <LogMockPercentileCalculator
           percentile={percentile}
           rank={rank}
@@ -1327,15 +1298,15 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           onUpdateTimeSpent={(t) => setTimeSpent(t)}
         />
 
-        {/* 7. SUBJECT-WISE BREAKDOWN (2 subjects per row grid) */}
-        <div className="card-luminous rounded-2xl p-4 sm:p-5 space-y-3">
+        {/* 4. SUBJECT-WISE BREAKDOWN (Supports Multi-Part DSSSB / Unified 2-col Grid) */}
+        <div className="card-luminous rounded-2xl p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
             <div>
               <span className="text-xs font-black font-display uppercase tracking-wider text-slate-400 block">
-                3. Subject &amp; Sectional Breakdown
+                4. Subject &amp; Sectional Breakdown
               </span>
               <span className="text-[10.5px] text-slate-400 font-medium">
-                2 subjects per row • Auto-sums total score • Auto-detects weak sections
+                {activeExam.hasParts ? "Part-Wise Score Entry • Auto-calculates Part A, Part B & Total" : "2 subjects per row • Auto-sums total score • Auto-detects weak sections"}
               </span>
             </div>
 
@@ -1346,53 +1317,344 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
             )}
           </div>
 
-          {/* 2 Subjects Per Row Grid */}
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
-            {sections.map((sec, idx) => (
-              <div
-                key={sec.id}
-                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5"
-              >
-                <div className="min-w-0">
-                  <span className="text-xs font-black text-slate-900 dark:text-slate-100 truncate block">
-                    {sec.name}
-                  </span>
-                </div>
+          {/* If Multi-Part Exam (e.g. DSSSB TGT CS) */}
+          {activeExam.hasParts ? (
+            <div className="space-y-4">
+              {/* Part A Block */}
+              {(() => {
+                const partASections = sections
+                  .map((s, idx) => ({ ...s, originalIndex: idx }))
+                  .filter((s) => !s.part || s.part === "Part A");
+                const partAScore = partASections.reduce((acc, s) => acc + (parseFloat(s.score) || 0), 0);
+                const partAMax = partASections.reduce((acc, s) => acc + (parseFloat(s.maxMarks) || 0), 0);
+                const partAName = activeExam.parts?.find((p) => p.id === "part-a")?.name || "Part A: General Section";
+                const isPartAQualified = partAMax > 0 && (partAScore / partAMax) >= 0.40;
 
-                <div className="flex items-center gap-1.5">
-                  <div className="flex-1">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase block">
-                      Score
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      placeholder="0"
-                      value={sec.score}
-                      onChange={(e) => handleSectionScoreChange(idx, e.target.value)}
-                      className="w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-black font-display text-slate-900 dark:text-slate-100 focus:outline-hidden"
-                    />
-                  </div>
-                  <div className="w-12">
-                    <label className="text-[9px] font-bold text-slate-400 uppercase block">
-                      Max
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      value={sec.maxMarks}
-                      onChange={(e) => {
-                        const updated = [...sections];
-                        updated[idx].maxMarks = e.target.value;
-                        setSections(updated);
+                return (
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/25 border border-indigo-100 dark:border-indigo-900/40 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 font-display">
+                          📘 {partAName}
+                        </span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full border bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800">
+                          {partASections.length} Subjects • {partAMax} M
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {partAScore > 0 && (
+                          <span
+                            className={`text-[10.5px] font-black px-2 py-0.5 rounded-md border ${
+                              isPartAQualified
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                                : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                            }`}
+                          >
+                            {isPartAQualified ? "✅ Part A Qualified (≥40%)" : "⚠️ Part A: Min 40% Needed"}
+                          </span>
+                        )}
+                        <span className="text-xs font-black text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                          Part A: {Math.round(partAScore * 100) / 100} / {partAMax}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {partASections.map((sec) => (
+                        <div
+                          key={sec.id}
+                          className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-1.5 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between min-w-0">
+                            <span className="text-xs font-black text-slate-900 dark:text-slate-100 truncate block">
+                              {sec.name}
+                            </span>
+                            {sections.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  HapticService.lightTap();
+                                  setSections(sections.filter((_, i) => i !== sec.originalIndex));
+                                }}
+                                className="text-slate-300 hover:text-rose-500 text-[10px] p-0.5 rounded cursor-pointer"
+                                title="Remove subject"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex-1">
+                              <label className="text-[9px] font-bold text-slate-400 uppercase block">
+                                Score
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                placeholder="0"
+                                value={sec.score}
+                                onChange={(e) => handleSectionScoreChange(sec.originalIndex, e.target.value)}
+                                className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-black font-display text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                              />
+                            </div>
+                            <div className="w-12">
+                              <label className="text-[9px] font-bold text-slate-400 uppercase block">
+                                Max
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                value={sec.maxMarks}
+                                onChange={(e) => {
+                                  const updated = [...sections];
+                                  updated[sec.originalIndex].maxMarks = e.target.value;
+                                  setSections(updated);
+                                }}
+                                className="w-full px-1.5 py-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-400 text-center focus:outline-hidden"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        HapticService.lightTap();
+                        setSections([
+                          ...sections,
+                          {
+                            id: `sec-${Date.now()}`,
+                            name: `Custom Part A Subject ${partASections.length + 1}`,
+                            score: "",
+                            maxMarks: "20",
+                            part: "Part A",
+                            correctCount: "",
+                            incorrectCount: "",
+                          },
+                        ]);
                       }}
-                      className="w-full px-1.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-400 text-center focus:outline-hidden"
-                    />
+                      className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 pt-0.5 cursor-pointer"
+                    >
+                      + Add Subject to Part A
+                    </button>
                   </div>
-                </div>
+                );
+              })()}
+
+              {/* Part B Block */}
+              {(() => {
+                const partBSections = sections
+                  .map((s, idx) => ({ ...s, originalIndex: idx }))
+                  .filter((s) => s.part === "Part B");
+                const partBScore = partBSections.reduce((acc, s) => acc + (parseFloat(s.score) || 0), 0);
+                const partBMax = partBSections.reduce((acc, s) => acc + (parseFloat(s.maxMarks) || 0), 0);
+                const partBName = activeExam.parts?.find((p) => p.id === "part-b")?.name || "Part B: Discipline Specific";
+                const isPartBQualified = partBMax > 0 && (partBScore / partBMax) >= 0.40;
+
+                return (
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50/50 dark:bg-purple-950/25 border border-purple-100 dark:border-purple-900/40 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-purple-900 dark:text-purple-200 font-display">
+                          💻 {partBName}
+                        </span>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full border bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800">
+                          {partBSections.length} Subjects • {partBMax} M
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {partBScore > 0 && (
+                          <span
+                            className={`text-[10.5px] font-black px-2 py-0.5 rounded-md border ${
+                              isPartBQualified
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                                : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                            }`}
+                          >
+                            {isPartBQualified ? "✅ Part B Qualified (≥40%)" : "⚠️ Part B: Min 40% Needed"}
+                          </span>
+                        )}
+                        <span className="text-xs font-black text-purple-700 dark:text-purple-300 bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-800 shadow-2xs">
+                          Part B: {Math.round(partBScore * 100) / 100} / {partBMax}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {partBSections.map((sec) => (
+                        <div
+                          key={sec.id}
+                          className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-1.5 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between min-w-0">
+                            <span className="text-xs font-black text-slate-900 dark:text-slate-100 truncate block">
+                              {sec.name}
+                            </span>
+                            {sections.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  HapticService.lightTap();
+                                  setSections(sections.filter((_, i) => i !== sec.originalIndex));
+                                }}
+                                className="text-slate-300 hover:text-rose-500 text-[10px] p-0.5 rounded cursor-pointer"
+                                title="Remove subject"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex-1">
+                              <label className="text-[9px] font-bold text-slate-400 uppercase block">
+                                Score
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                placeholder="0"
+                                value={sec.score}
+                                onChange={(e) => handleSectionScoreChange(sec.originalIndex, e.target.value)}
+                                className="w-full px-2 py-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-black font-display text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                              />
+                            </div>
+                            <div className="w-12">
+                              <label className="text-[9px] font-bold text-slate-400 uppercase block">
+                                Max
+                              </label>
+                              <input
+                                type="number"
+                                step="any"
+                                value={sec.maxMarks}
+                                onChange={(e) => {
+                                  const updated = [...sections];
+                                  updated[sec.originalIndex].maxMarks = e.target.value;
+                                  setSections(updated);
+                                }}
+                                className="w-full px-1.5 py-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-400 text-center focus:outline-hidden"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        HapticService.lightTap();
+                        setSections([
+                          ...sections,
+                          {
+                            id: `sec-${Date.now()}`,
+                            name: `Custom Part B Subject ${partBSections.length + 1}`,
+                            score: "",
+                            maxMarks: "20",
+                            part: "Part B",
+                            correctCount: "",
+                            incorrectCount: "",
+                          },
+                        ]);
+                      }}
+                      className="text-[11px] font-black text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 pt-0.5 cursor-pointer"
+                    >
+                      + Add Subject to Part B
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            /* Standard 2 Subjects Per Row Grid */
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                {sections.map((sec, idx) => (
+                  <div
+                    key={sec.id}
+                    className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between min-w-0">
+                      <span className="text-xs font-black text-slate-900 dark:text-slate-100 truncate block">
+                        {sec.name}
+                      </span>
+                      {sections.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            HapticService.lightTap();
+                            setSections(sections.filter((_, i) => i !== idx));
+                          }}
+                          className="text-slate-300 hover:text-rose-500 text-[10px] p-0.5 rounded cursor-pointer"
+                          title="Remove subject"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase block">
+                          Score
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          placeholder="0"
+                          value={sec.score}
+                          onChange={(e) => handleSectionScoreChange(idx, e.target.value)}
+                          className="w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-black font-display text-slate-900 dark:text-slate-100 focus:outline-hidden"
+                        />
+                      </div>
+                      <div className="w-12">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase block">
+                          Max
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={sec.maxMarks}
+                          onChange={(e) => {
+                            const updated = [...sections];
+                            updated[idx].maxMarks = e.target.value;
+                            setSections(updated);
+                          }}
+                          className="w-full px-1.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-400 text-center focus:outline-hidden"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  HapticService.lightTap();
+                  setSections([
+                    ...sections,
+                    {
+                      id: `sec-${Date.now()}`,
+                      name: `Subject ${sections.length + 1}`,
+                      score: "",
+                      maxMarks: "50",
+                      correctCount: "",
+                      incorrectCount: "",
+                    },
+                  ]);
+                }}
+                className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                + Add Subject
+              </button>
+            </div>
+          )}
 
           {/* Auto-detected Weak Section Pill with 1-click Add */}
           {sectionAnalysis.weakest && sectionAnalysis.weakest.percentage < 65 && (
@@ -1415,7 +1677,7 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           )}
         </div>
 
-        {/* 8. DIAGNOSTIC WEAK AREAS (Collapsible, collapsed by default) */}
+        {/* 5. DIAGNOSTIC WEAK AREAS (Collapsible, collapsed by default) */}
         <div className="card-luminous rounded-2xl p-4 space-y-3">
           <button
             type="button"
@@ -1427,7 +1689,7 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           >
             <div className="flex items-center gap-2">
               <span className="text-xs font-black uppercase tracking-wider text-slate-400">
-                4. Diagnostic Weak Areas (Optional)
+                5. Diagnostic Weak Areas (Optional)
               </span>
               {weakAreas.length > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-black border border-rose-200 dark:border-rose-900">

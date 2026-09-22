@@ -69,7 +69,34 @@ export default function App() {
 
   const [examProfiles, setExamProfiles] = useState<ExamProfile[]>(() => {
     const saved = localStorage.getItem("mocktrack_profiles");
-    return saved ? JSON.parse(saved) : INITIAL_EXAM_PROFILES;
+    if (saved) {
+      try {
+        const parsed: ExamProfile[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((p) => p.id));
+          const missingCatalog = INITIAL_EXAM_PROFILES.filter((p) => !existingIds.has(p.id));
+          const updatedParsed = parsed.map((p) => {
+            const catalogMatch = INITIAL_EXAM_PROFILES.find((c) => c.id === p.id);
+            if (catalogMatch) {
+              return {
+                ...catalogMatch,
+                ...p,
+                category: p.category || catalogMatch.category,
+                icon: p.icon || catalogMatch.icon,
+                hasParts: p.hasParts ?? catalogMatch.hasParts,
+                parts: p.parts || catalogMatch.parts,
+                subjects: p.subjects && p.subjects.length > 0 ? p.subjects : catalogMatch.subjects,
+              };
+            }
+            return p;
+          });
+          return [...updatedParsed, ...missingCatalog];
+        }
+      } catch (e) {
+        console.warn("Failed to parse saved profiles:", e);
+      }
+    }
+    return INITIAL_EXAM_PROFILES;
   });
 
   const [attempts, setAttempts] = useState<MockAttempt[]>(() => {
@@ -133,6 +160,7 @@ export default function App() {
   // Modals state
   const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
   const [editingAttempt, setEditingAttempt] = useState<Partial<MockAttempt> | undefined>(undefined);
+  const [logWorkflowMode, setLogWorkflowMode] = useState<"select" | "manual" | "link" | "screenshot">("manual");
   const [isOcrModalOpen, setIsOcrModalOpen] = useState<boolean>(false);
   const [isProfileSwitcherOpen, setIsProfileSwitcherOpen] = useState<boolean>(false);
   const [isEditNameOpen, setIsEditNameOpen] = useState<boolean>(false);
@@ -291,6 +319,18 @@ export default function App() {
   // Profile Selection
   const handleSelectProfile = (id: string) => {
     setCandidate((prev) => ({ ...prev, activeExamProfileId: id }));
+  };
+
+  // Select exam from master catalog or custom list
+  const handleSelectCatalogExam = (profile: ExamProfile) => {
+    setExamProfiles((prev) => {
+      const exists = prev.some((p) => p.id === profile.id);
+      if (!exists) {
+        return [...prev, profile];
+      }
+      return prev;
+    });
+    setCandidate((prev) => ({ ...prev, activeExamProfileId: profile.id }));
   };
 
   // Save weak areas history
@@ -576,6 +616,7 @@ export default function App() {
               onSaveMock={handleSaveMock}
               onNavigateTab={setActiveTab}
               initialData={editingAttempt}
+              initialWorkflowMode={logWorkflowMode}
               onOpenOcrModal={() => setIsOcrModalOpen(true)}
             />
           )}
@@ -665,74 +706,96 @@ export default function App() {
         <BottomNav
           activeTab={activeTab}
           onSelectTab={setActiveTab}
+          onSelectLogWorkflow={(workflow) => {
+            setEditingAttempt(undefined);
+            setLogWorkflowMode(workflow);
+            setActiveTab("log");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
           onOpenLogModal={() => {
             setEditingAttempt(undefined);
+            setLogWorkflowMode("manual");
             setActiveTab("log");
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
         />
 
         {/* Modals */}
-        <LogMockModal
-          isOpen={isLogModalOpen}
-          onClose={() => {
-            setIsLogModalOpen(false);
-            setEditingAttempt(undefined);
-          }}
-          activeExam={activeExam}
-          attempts={attempts}
-          onSaveMock={handleSaveMock}
-          initialData={editingAttempt}
-          onOpenOcrModal={() => setIsOcrModalOpen(true)}
-          frequentlyUsedWeakAreas={weakAreasHistory}
-          onSaveWeakAreasHistory={handleSaveWeakAreasHistory}
-        />
+        {isLogModalOpen && (
+          <LogMockModal
+            isOpen={isLogModalOpen}
+            onClose={() => {
+              setIsLogModalOpen(false);
+              setEditingAttempt(undefined);
+            }}
+            activeExam={activeExam}
+            attempts={attempts}
+            onSaveMock={handleSaveMock}
+            initialData={editingAttempt}
+            onOpenOcrModal={() => setIsOcrModalOpen(true)}
+            frequentlyUsedWeakAreas={weakAreasHistory}
+            onSaveWeakAreasHistory={handleSaveWeakAreasHistory}
+          />
+        )}
 
-        <OcrExtractorModal
-          isOpen={isOcrModalOpen}
-          onClose={() => setIsOcrModalOpen(false)}
-          onApplyExtractedData={handleApplyExtractedData}
-        />
+        {isOcrModalOpen && (
+          <OcrExtractorModal
+            isOpen={isOcrModalOpen}
+            onClose={() => setIsOcrModalOpen(false)}
+            onApplyExtractedData={handleApplyExtractedData}
+          />
+        )}
 
-        <ProfileSwitcherModal
-          isOpen={isProfileSwitcherOpen}
-          onClose={() => setIsProfileSwitcherOpen(false)}
-          examProfiles={examProfiles}
-          activeProfileId={candidate.activeExamProfileId}
-          onSelectProfile={handleSelectProfile}
-          onOpenAddModal={() => setIsAddProfileOpen(true)}
-          onOpenSetDateModal={() => setIsSetDateOpen(true)}
-        />
+        {isProfileSwitcherOpen && (
+          <ProfileSwitcherModal
+            isOpen={isProfileSwitcherOpen}
+            onClose={() => setIsProfileSwitcherOpen(false)}
+            examProfiles={examProfiles}
+            activeProfileId={candidate.activeExamProfileId}
+            onSelectProfile={handleSelectProfile}
+            onSelectCatalogExam={handleSelectCatalogExam}
+            onOpenAddModal={() => setIsAddProfileOpen(true)}
+            onOpenSetDateModal={() => setIsSetDateOpen(true)}
+          />
+        )}
 
-        <NameEditModal
-          isOpen={isEditNameOpen}
-          onClose={() => setIsEditNameOpen(false)}
-          currentName={candidate.name}
-          currentGender={candidate.gender || "male"}
-          onSaveName={handleSaveName}
-        />
+        {isEditNameOpen && (
+          <NameEditModal
+            isOpen={isEditNameOpen}
+            onClose={() => setIsEditNameOpen(false)}
+            currentName={candidate.name}
+            currentGender={candidate.gender || "male"}
+            onSaveName={handleSaveName}
+          />
+        )}
 
-        <SetDateModal
-          isOpen={isSetDateOpen}
-          onClose={() => setIsSetDateOpen(false)}
-          activeExam={activeExam}
-          onSaveDate={handleSaveDate}
-        />
+        {isSetDateOpen && (
+          <SetDateModal
+            isOpen={isSetDateOpen}
+            onClose={() => setIsSetDateOpen(false)}
+            activeExam={activeExam}
+            onSaveDate={handleSaveDate}
+          />
+        )}
 
-        <AddProfileModal
-          isOpen={isAddProfileOpen}
-          onClose={() => setIsAddProfileOpen(false)}
-          onAddProfile={handleAddProfile}
-        />
+        {isAddProfileOpen && (
+          <AddProfileModal
+            isOpen={isAddProfileOpen}
+            onClose={() => setIsAddProfileOpen(false)}
+            onAddProfile={handleAddProfile}
+          />
+        )}
 
-        <ScoreCardModal
-          isOpen={isScoreCardOpen}
-          onClose={() => setIsScoreCardOpen(false)}
-          candidate={candidate}
-          activeExam={activeExam}
-          attempts={attempts}
-          milestoneTitle={scoreCardMilestoneTitle}
-        />
+        {isScoreCardOpen && (
+          <ScoreCardModal
+            isOpen={isScoreCardOpen}
+            onClose={() => setIsScoreCardOpen(false)}
+            candidate={candidate}
+            activeExam={activeExam}
+            attempts={attempts}
+            milestoneTitle={scoreCardMilestoneTitle}
+          />
+        )}
       </div>
     </LanguageProvider>
   );

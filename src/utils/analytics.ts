@@ -1,4 +1,5 @@
 import { MockAttempt, ExamProfile } from "../types";
+import { getSubjectsForProfile } from "../data/allExamsCatalog";
 
 export interface PerformanceInsight {
   hasEnoughData: boolean;
@@ -289,35 +290,62 @@ export function calculateAnalytics(
     };
   }
 
-  // Subject breakdown calculation
-  const defaultSections = [
-    "Quantitative Aptitude",
-    "Reasoning Ability",
-    "English Comprehension",
-    "General Awareness",
-  ];
+  // Subject breakdown calculation mapped to active exam profile's subjects
+  const examSubjects = activeExam ? getSubjectsForProfile(activeExam) : [];
 
-  const sectionMap: Record<string, { totalScore: number; totalMax: number; count: number }> = {};
-  defaultSections.forEach((sec) => {
-    sectionMap[sec] = { totalScore: 0, totalMax: 0, count: 0 };
-  });
+  const sectionMap: Record<
+    string,
+    { totalScore: number; totalMax: number; count: number; defaultMax: number; part?: string }
+  > = {};
+
+  if (examSubjects && examSubjects.length > 0) {
+    examSubjects.forEach((sub) => {
+      sectionMap[sub.name] = {
+        totalScore: 0,
+        totalMax: 0,
+        count: 0,
+        defaultMax: sub.maxMarks || 20,
+        part: sub.part,
+      };
+    });
+  } else {
+    const defaultSections = [
+      "Quantitative Aptitude",
+      "Reasoning Ability",
+      "English Comprehension",
+      "General Awareness",
+    ];
+    defaultSections.forEach((sec) => {
+      sectionMap[sec] = { totalScore: 0, totalMax: 0, count: 0, defaultMax: 50 };
+    });
+  }
 
   sorted.forEach((att) => {
     if (att.sections && att.sections.length > 0) {
       att.sections.forEach((sec) => {
         if (!sectionMap[sec.name]) {
-          sectionMap[sec.name] = { totalScore: 0, totalMax: 0, count: 0 };
+          sectionMap[sec.name] = {
+            totalScore: 0,
+            totalMax: 0,
+            count: 0,
+            defaultMax: sec.maxMarks || 50,
+            part: sec.part,
+          };
         }
         sectionMap[sec.name].totalScore += sec.score;
         sectionMap[sec.name].totalMax += sec.maxMarks;
         sectionMap[sec.name].count += 1;
+        if (sec.part) sectionMap[sec.name].part = sec.part;
       });
     }
   });
 
   const subjectBreakdown = Object.entries(sectionMap).map(([name, data]) => {
     const scoreAvg = data.count > 0 ? Number((data.totalScore / data.count).toFixed(1)) : 0;
-    const maxAvg = data.count > 0 ? Number((data.totalMax / data.count).toFixed(1)) : 50;
+    const maxAvg =
+      data.count > 0
+        ? Number((data.totalMax / data.count).toFixed(1))
+        : data.defaultMax;
     const percentage = maxAvg > 0 ? Math.round((scoreAvg / maxAvg) * 100) : 0;
 
     let status: "Very Strong" | "Strong" | "Moderate" | "Needs Improvement" = "Moderate";
@@ -339,11 +367,13 @@ export function calculateAnalytics(
 
     return {
       name,
+      part: data.part,
       scoreAvg,
       maxAvg,
       percentage,
       status,
       colorClass,
+      attemptCount: data.count,
     };
   });
 

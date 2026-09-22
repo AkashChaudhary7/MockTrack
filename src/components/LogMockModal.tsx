@@ -455,8 +455,6 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
     }
   }, [isOpen, initialData, activeExam]);
 
-  if (!isOpen) return null;
-
   // SMART SCORE PARSER: "157", "157/200", "157 / 200", "157.5/200"
   const handleScoreInputChange = (val: string) => {
     setScoreInput(val);
@@ -953,6 +951,8 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
     setBookmarkletCopied(true);
     setTimeout(() => setBookmarkletCopied(false), 2500);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 font-sans select-none overflow-hidden">

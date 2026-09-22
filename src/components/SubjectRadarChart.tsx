@@ -20,13 +20,31 @@ export const SubjectRadarChart: React.FC<SubjectRadarChartProps> = ({ metrics })
     metrics[0] || null
   );
 
-  // Axis configuration for 4 core subjects
-  const subjects = [
-    { name: "Quantitative Aptitude", label: "Quant", angle: -90 }, // Top
-    { name: "Reasoning Ability", label: "Reasoning", angle: 0 },    // Right
-    { name: "English Comprehension", label: "English", angle: 90 }, // Bottom
-    { name: "General Awareness", label: "GA", angle: 180 },        // Left
-  ];
+  // Dynamic axis configuration adapting to any number of subjects in active exam profile
+  const subjects = React.useMemo(() => {
+    if (!metrics || metrics.length === 0) {
+      return [
+        { name: "Quantitative Aptitude", label: "Quant", angle: -90 },
+        { name: "Reasoning Ability", label: "Reasoning", angle: 0 },
+        { name: "English Comprehension", label: "English", angle: 90 },
+        { name: "General Awareness", label: "GA", angle: 180 },
+      ];
+    }
+    const count = metrics.length;
+    return metrics.map((m, idx) => {
+      const angle = (idx * 360) / count - 90;
+      // Concise label
+      let label = m.name;
+      if (label.length > 14) {
+        label = label.slice(0, 12) + "…";
+      }
+      return {
+        name: m.name,
+        label,
+        angle,
+      };
+    });
+  }, [metrics]);
 
   const size = 280;
   const cx = size / 2;

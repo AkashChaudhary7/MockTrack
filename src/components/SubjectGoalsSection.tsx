@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ExamProfile, MockAttempt, SubjectGoal } from "../types";
 import { Target, Plus, Trash2, Edit3, X, Sparkles } from "lucide-react";
 import { HapticService } from "../services/HapticService";
+import { getSubjectsForProfile } from "../data/allExamsCatalog";
 
 interface SubjectGoalsSectionProps {
   activeExam: ExamProfile;
@@ -27,28 +28,9 @@ export const SubjectGoalsSection: React.FC<SubjectGoalsSectionProps> = ({
 
   const examAttempts = attempts.filter((a) => a.profileId === activeExam.id);
 
-  // Suggested subjects based on exam
-  const examCode = (activeExam.shortCode || activeExam.name || "").toLowerCase();
-  let defaultSuggestions = [
-    "Quantitative Aptitude",
-    "General Intelligence & Reasoning",
-    "English Comprehension",
-    "General Awareness",
-  ];
-  if (examCode.includes("bank")) {
-    defaultSuggestions = [
-      "Quantitative Aptitude",
-      "Reasoning Ability",
-      "English Language",
-      "Banking & Financial Awareness",
-    ];
-  } else if (examCode.includes("jee")) {
-    defaultSuggestions = ["Physics", "Chemistry", "Mathematics"];
-  } else if (examCode.includes("neet")) {
-    defaultSuggestions = ["Biology", "Chemistry", "Physics"];
-  } else if (examCode.includes("upsc")) {
-    defaultSuggestions = ["General Studies Paper 1", "CSAT Paper 2"];
-  }
+  // Suggested subjects based on active exam profile config
+  const profileSubjects = getSubjectsForProfile(activeExam);
+  const defaultSuggestions = profileSubjects.map((s) => s.name);
 
   // Available suggestions (exclude those already added)
   const availableSuggestions = defaultSuggestions.filter(

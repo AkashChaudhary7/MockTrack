@@ -29,6 +29,20 @@
     <meta property="og:description" content="Offline-first personal mock test score tracker, subject weakness analyzer, AI scorecard OCR reader, and rank command center." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/icon-512.png" />
+    <script>
+      // Clear stale service worker caches on development/preview instances
+      if ('serviceWorker' in navigator && (location.hostname.includes('run.app') || location.hostname === 'localhost')) {
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            for (var i = 0; i < keys.length; i++) {
+              if (keys[i].indexOf('mocktrack-static-v5') === -1 && keys[i].indexOf('mocktrack-data-v5') === -1) {
+                caches.delete(keys[i]);
+              }
+            }
+          });
+        }
+      }
+    </script>
   </head>
   <body class="bg-[#FAFCFF] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-500 selection:text-white font-sans">
     <div id="root"></div>

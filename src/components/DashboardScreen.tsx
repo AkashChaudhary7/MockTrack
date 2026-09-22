@@ -6,7 +6,7 @@ import { MilestoneEvent } from "../utils/milestones";
 import { MilestoneBanner } from "./MilestoneBanner";
 import { PLATFORMS } from "../data/platforms";
 import { PerformanceTrendChart } from "./PerformanceTrendChart";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion, AnimatePresence } from "motion/react";
 import {
   Target,
   Plus,
@@ -21,6 +21,7 @@ import {
   Share2,
   Flame,
   Clock,
+  HelpCircle,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { PlatformLogo } from "./PlatformLogo";
@@ -32,6 +33,7 @@ import { TargetScoreBanner } from "./TargetScoreBanner";
 import { RecentMocksFeedbackSection } from "./RecentMocksFeedbackSection";
 import { MockDetailModal } from "./MockDetailModal";
 import {
+  Doodle3DTarget,
   Doodle3DFlame,
   Doodle3DTrophy,
   Doodle3DStopwatch,
@@ -95,6 +97,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState<boolean>(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState<boolean>(false);
   const [selectedMockForDetail, setSelectedMockForDetail] = useState<MockAttempt | null>(null);
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   const { t, effectiveLang } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
   const analytics = calculateAnalytics(attempts, activeExam);
@@ -144,6 +147,124 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const cutoffProbability = examAttempts.length > 0 && cutoffTarget > 0
     ? Math.min(99, Math.max(20, Math.round(((analytics.baselineScore || currentAvgScore) / cutoffTarget) * 88)))
     : 0;
+
+  // Interactive 3D Quick Stats Configuration with Friendly Human-Touch Microcopy
+  const QUICK_STATS_CONFIG = [
+    {
+      id: "totalMocks",
+      label: "Total Mocks",
+      sub: "Logged",
+      value: `${examAttempts.length}`,
+      valClass: "text-indigo-700 dark:text-indigo-300",
+      bgClass: "bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-100/70 dark:border-indigo-800/50",
+      icon: <Doodle3DTarget size={14} className="shrink-0" />,
+      tooltipTitle: "Total Mocks Logged",
+      tooltipBadge: "Volume & Stamina",
+      tooltipSheen: "from-indigo-500 via-blue-500 to-indigo-600",
+      tooltipBadgeClass: "bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
+      explanation:
+        "Every single test you log matters! Regular mock practice builds real exam stamina, calms natural exam anxiety, and irons out random flukes so your genuine ability shines through.",
+      footerCurrent: `Logged: ${examAttempts.length} tests`,
+      footerStatus: "Endurance Builder",
+      alignMobile: "left" as const,
+      alignDesktop: "left" as const,
+    },
+    {
+      id: "streak",
+      label: "Streak",
+      sub: "Active",
+      value: `${streakStats.currentStreak}d`,
+      valClass: "text-amber-500 dark:text-amber-400",
+      bgClass: "bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/60 dark:border-amber-800/50",
+      icon: <Doodle3DFlame size={14} className="shrink-0" />,
+      tooltipTitle: "Daily Practice Streak",
+      tooltipBadge: "Momentum Engine",
+      tooltipSheen: "from-amber-500 via-orange-500 to-red-500",
+      tooltipBadgeClass: "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+      explanation:
+        "Consistency beats sporadic cramming every time! Even 15 minutes of daily practice keeps key formulas, mental shortcuts, and question-spotting instincts lightning fast in your memory.",
+      footerCurrent: `${streakStats.currentStreak} Days Running`,
+      footerStatus: "Keep The Flame Lit",
+      alignMobile: "center" as const,
+      alignDesktop: "left" as const,
+    },
+    {
+      id: "highest",
+      label: "Highest",
+      sub: "Peak Best",
+      value: highestFullMockScore > 0 ? `${highestFullMockScore}` : "--",
+      valClass: "text-purple-600 dark:text-purple-400",
+      bgClass: "bg-purple-50/60 dark:bg-purple-950/30 border-purple-200/60 dark:border-purple-800/50",
+      icon: <Doodle3DTrophy size={14} className="shrink-0" />,
+      tooltipTitle: "Peak Best Score",
+      tooltipBadge: "Personal Best (PB)",
+      tooltipSheen: "from-purple-500 via-indigo-500 to-pink-500",
+      tooltipBadgeClass: "bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+      explanation:
+        "Your highest score across full-length mocks! This is tangible proof of what you can accomplish on your finest day. Your ongoing roadmap is turning this peak score into your everyday normal.",
+      footerCurrent: `Peak: ${highestFullMockScore > 0 ? highestFullMockScore : "--"} marks`,
+      footerStatus: "Capability Proof",
+      alignMobile: "right" as const,
+      alignDesktop: "center" as const,
+    },
+    {
+      id: "avgScore",
+      label: "Avg Score",
+      sub: "Overall",
+      value: avgFullMockScore > 0 ? `${avgFullMockScore}` : "--",
+      valClass: "text-blue-600 dark:text-blue-400",
+      bgClass: "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-800/50",
+      icon: <Doodle3DTarget size={14} className="shrink-0" />,
+      tooltipTitle: "Operational Average",
+      tooltipBadge: "Dependable Base",
+      tooltipSheen: "from-blue-500 via-cyan-500 to-indigo-500",
+      tooltipBadgeClass: "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+      explanation:
+        "Your dependable operational benchmark across full mocks. Tracking your mean score gives you real peace of mind and calm expectations before walking into the actual exam hall.",
+      footerCurrent: `Mean: ${avgFullMockScore > 0 ? avgFullMockScore : "--"} / ${activeExam.totalMarks}`,
+      footerStatus: "Core Confidence",
+      alignMobile: "left" as const,
+      alignDesktop: "center" as const,
+    },
+    {
+      id: "cutoffOdds",
+      label: "Cutoff Odds",
+      sub: cutoffProbability >= 85 ? "High Safety" : cutoffProbability >= 70 ? "Promising" : "Developing",
+      value: examAttempts.length > 0 ? `${cutoffProbability}%` : "--",
+      valClass: "text-emerald-600 dark:text-emerald-400",
+      bgClass: "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-800/50",
+      icon: <Doodle3DShield size={14} className="shrink-0" />,
+      tooltipTitle: "Cutoff Probability",
+      tooltipBadge: "Readiness Safety Gauge",
+      tooltipSheen: "from-emerald-500 via-teal-500 to-emerald-600",
+      tooltipBadgeClass: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+      explanation:
+        "Our friendly readiness forecast! We evaluate your average score and consistency against historical exam cutoffs to calculate how safely positioned you are to clear the exam threshold.",
+      footerCurrent: `Odds: ${examAttempts.length > 0 ? `${cutoffProbability}%` : "--"}`,
+      footerStatus: cutoffProbability >= 85 ? "High Safety Margin" : cutoffProbability >= 70 ? "Promising Range" : "Developing",
+      alignMobile: "center" as const,
+      alignDesktop: "right" as const,
+    },
+    {
+      id: "accuracy",
+      label: "Accuracy",
+      sub: "Precision",
+      value: `${overallAccuracy}%`,
+      valClass: "text-emerald-600 dark:text-emerald-400",
+      bgClass: "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-800/50",
+      icon: <Doodle3DSparkle size={12} className="shrink-0" />,
+      tooltipTitle: "Strike Accuracy",
+      tooltipBadge: "Penalty Shield",
+      tooltipSheen: "from-teal-500 via-emerald-500 to-green-600",
+      tooltipBadgeClass: "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+      explanation:
+        "Your precision strike rate! In competitive tests with negative penalties, strong accuracy acts as your armor—it protects your hard-earned points from being drained by hasty guesses.",
+      footerCurrent: `Strike Rate: ${overallAccuracy}%`,
+      footerStatus: "Negative Penalty Shield",
+      alignMobile: "right" as const,
+      alignDesktop: "right" as const,
+    },
+  ];
 
   // Time-based greeting
   const today = new Date();
@@ -233,6 +354,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             Quick Stats
           </h2>
           <div className="flex items-center gap-1.5">
+            {/* 3D Tooltip Hint */}
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/60">
+              <HelpCircle className="w-3 h-3" />
+              <span>Hover cards for 3D breakdown</span>
+            </span>
+
             {/* Share Progress Button - Icon Only */}
             <button
               type="button"
@@ -263,86 +390,112 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {/* Total Mocks */}
-          <div className="p-2.5 bg-indigo-50/50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100/70 dark:border-indigo-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-              Total Mocks
-            </span>
-            <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 block tabular-nums font-display my-0.5">
-              {examAttempts.length}
-            </span>
-            <span className="text-[9px] text-indigo-500/80 font-bold uppercase tracking-wider">Logged</span>
-          </div>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 relative">
+          {QUICK_STATS_CONFIG.map((stat) => {
+            const isHovered = activeTooltip === stat.id;
+            return (
+              <div
+                key={stat.id}
+                className="relative"
+                onMouseEnter={() => {
+                  setActiveTooltip(stat.id);
+                  HapticService.selection();
+                }}
+                onMouseLeave={() => setActiveTooltip(null)}
+              >
+                {/* 3D-Styled Popover Tooltip with Human-Touch Tone */}
+                <AnimatePresence>
+                  {isHovered && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.94 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 5, scale: 0.94 }}
+                      transition={{ duration: 0.16, ease: "easeOut" }}
+                      className={`absolute z-40 bottom-full mb-2.5 w-64 sm:w-72 pointer-events-none select-none ${
+                        stat.alignMobile === "left"
+                          ? "left-0"
+                          : stat.alignMobile === "center"
+                          ? "left-1/2 -translate-x-1/2"
+                          : "right-0"
+                      } ${
+                        stat.alignDesktop === "left"
+                          ? "sm:left-0 sm:right-auto sm:translate-x-0"
+                          : stat.alignDesktop === "center"
+                          ? "sm:left-1/2 sm:right-auto sm:-translate-x-1/2"
+                          : "sm:left-auto sm:right-0 sm:translate-x-0"
+                      }`}
+                    >
+                      <div className="p-3.5 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md rounded-2xl border-2 border-indigo-200/90 dark:border-indigo-800/80 shadow-2xl shadow-indigo-950/20 dark:shadow-black/70 text-left">
+                        <div className={`h-1 w-full bg-gradient-to-r ${stat.tooltipSheen} rounded-full mb-2.5`} />
+                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            {stat.icon}
+                            <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+                              {stat.tooltipTitle}
+                            </span>
+                          </div>
+                          <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border ${stat.tooltipBadgeClass}`}>
+                            {stat.tooltipBadge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+                          {stat.explanation}
+                        </p>
+                        <div className="mt-2.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400">
+                          <span>{stat.footerCurrent}</span>
+                          <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{stat.footerStatus}</span>
+                        </div>
+                      </div>
+                      {/* Downward Caret Arrow */}
+                      <div
+                        className={`w-3 h-3 bg-white dark:bg-slate-900 border-r-2 border-b-2 border-indigo-200/90 dark:border-indigo-800/80 rotate-45 -mt-1.5 ${
+                          stat.alignMobile === "left"
+                            ? "ml-7 mr-auto"
+                            : stat.alignMobile === "center"
+                            ? "mx-auto"
+                            : "mr-7 ml-auto"
+                        } ${
+                          stat.alignDesktop === "left"
+                            ? "sm:ml-7 sm:mr-auto"
+                            : stat.alignDesktop === "center"
+                            ? "sm:mx-auto"
+                            : "sm:mr-7 sm:ml-auto"
+                        }`}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-          {/* Current Streak with 3D Flame Doodle */}
-          <div className="p-2.5 bg-amber-50/60 dark:bg-amber-950/30 rounded-xl border border-amber-200/60 dark:border-amber-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center relative overflow-hidden group">
-            <div className="flex items-center justify-center gap-1">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-                Streak
-              </span>
-              <Doodle3DFlame size={14} className="shrink-0 transition-transform group-hover:scale-125" />
-            </div>
-            <span className="text-base sm:text-lg font-black text-amber-500 dark:text-amber-400 block tabular-nums font-display my-0.5">
-              {streakStats.currentStreak}d
-            </span>
-            <span className="text-[9px] text-amber-600/80 dark:text-amber-400/80 font-bold">Active</span>
-          </div>
-
-          {/* Highest Score with 3D Trophy Doodle */}
-          <div className="p-2.5 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-200/60 dark:border-purple-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center relative overflow-hidden group" title="Excludes sectional and topic tests">
-            <div className="flex items-center justify-center gap-1">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-                Highest
-              </span>
-              <Doodle3DTrophy size={14} className="shrink-0 transition-transform group-hover:scale-125" />
-            </div>
-            <span className="text-base sm:text-lg font-black text-purple-600 dark:text-purple-400 block tabular-nums font-display my-0.5">
-              {highestFullMockScore > 0 ? highestFullMockScore : "--"}
-            </span>
-            <span className="text-[9px] text-purple-500/80 font-bold">Peak Best</span>
-          </div>
-
-          {/* Average Score (Full Mocks) */}
-          <div className="p-2.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-200/60 dark:border-blue-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center" title="Excludes sectional and topic tests">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-              Avg Score
-            </span>
-            <span className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 block tabular-nums font-display my-0.5">
-              {avgFullMockScore > 0 ? avgFullMockScore : "--"}
-            </span>
-            <span className="text-[9px] text-blue-500/80 font-bold">Overall</span>
-          </div>
-
-          {/* Cutoff Probability with 3D Shield Doodle */}
-          <div className="p-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/60 dark:border-emerald-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center group">
-            <div className="flex items-center justify-center gap-1">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-                Cutoff Odds
-              </span>
-              <Doodle3DShield size={14} className="shrink-0 transition-transform group-hover:scale-125" />
-            </div>
-            <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 block tabular-nums font-display my-0.5">
-              {examAttempts.length > 0 ? `${cutoffProbability}%` : "--"}
-            </span>
-            <span className="text-[9px] text-emerald-500/80 font-bold">
-              {cutoffProbability >= 85 ? "High Safety" : cutoffProbability >= 70 ? "Promising" : "Developing"}
-            </span>
-          </div>
-
-          {/* Accuracy with 3D Sparkle */}
-          <div className="p-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl border border-emerald-200/60 dark:border-emerald-800/50 text-center transition-all hover:scale-[1.02] flex flex-col justify-between items-center group">
-            <div className="flex items-center justify-center gap-1">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
-                Accuracy
-              </span>
-              <Doodle3DSparkle size={12} className="shrink-0 transition-transform group-hover:scale-125" />
-            </div>
-            <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 block tabular-nums font-display my-0.5">
-              {overallAccuracy}%
-            </span>
-            <span className="text-[9px] text-emerald-500/80 font-bold">Precision</span>
-          </div>
+                {/* Card Item */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTooltip(isHovered ? null : stat.id);
+                    HapticService.selection();
+                  }}
+                  className={`w-full p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col justify-between items-center ${stat.bgClass} ${
+                    isHovered
+                      ? "ring-2 ring-indigo-500 scale-[1.03] shadow-md shadow-indigo-500/15"
+                      : "hover:scale-[1.02]"
+                  }`}
+                  aria-label={`${stat.label}: ${stat.value}`}
+                >
+                  <div className="flex items-center justify-center gap-1 w-full">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                      {stat.label}
+                    </span>
+                    {stat.icon}
+                  </div>
+                  <span className={`text-base sm:text-lg font-black block tabular-nums font-display my-0.5 ${stat.valClass}`}>
+                    {stat.value}
+                  </span>
+                  <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    {stat.sub}
+                  </span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -508,6 +661,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           onOpenInAppModal={() => setIsFeedbackModalOpen(true)}
         />
       </motion.div>
+
+
 
       {/* Calendar View Modal */}
       <CalendarViewModal
