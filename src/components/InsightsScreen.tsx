@@ -25,11 +25,13 @@ import { EmptyState } from "./EmptyState";
 import { HapticService } from "../services/HapticService";
 import { CandidateProfile } from "../types";
 import { downloadBilingualReportPDF } from "../utils/pdfExport";
+import { TargetScoreComparisonChart } from "./TargetScoreComparisonChart";
 
 interface InsightsScreenProps {
   activeExam: ExamProfile;
   attempts: MockAttempt[];
   candidate?: CandidateProfile;
+  onUpdateExamProfile?: (updatedProfile: ExamProfile) => void;
 }
 
 interface SubjectInsightData {
@@ -59,6 +61,7 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({
     theme: "system" as const,
     showSplashOnStartup: false,
   },
+  onUpdateExamProfile,
 }) => {
   const examAttempts = attempts.filter((a) => a.profileId === activeExam.id);
   const analytics = calculateAnalytics(attempts, activeExam);
@@ -253,6 +256,13 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Target Score vs. Recent Mocks Visual Comparison Chart */}
+      <TargetScoreComparisonChart
+        attempts={examAttempts}
+        activeExam={activeExam}
+        onUpdateExamProfile={onUpdateExamProfile}
+      />
 
       {/* Performance Strategy & Recommendation */}
       <div className="card-luminous rounded-2xl p-6 space-y-3">

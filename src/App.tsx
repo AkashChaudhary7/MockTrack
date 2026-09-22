@@ -531,7 +531,7 @@ export default function App() {
 
   return (
     <LanguageProvider>
-      <div className="min-h-screen bg-[#FAFCFF] dark:bg-[#090D16] bg-grid-pattern text-slate-900 dark:text-slate-100 font-sans transition-colors selection:bg-indigo-500 selection:text-white">
+      <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#090D16] bg-grid-pattern text-slate-900 dark:text-slate-100 font-sans transition-colors selection:bg-indigo-500 selection:text-white">
         {/* Offline Banner Indicator */}
         <OfflineBanner />
 
@@ -644,6 +644,7 @@ export default function App() {
               activeExam={activeExam}
               attempts={attempts}
               candidate={candidate}
+              onUpdateExamProfile={handleUpdateExamProfile}
             />
           )}
 

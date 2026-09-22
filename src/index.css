@@ -47,7 +47,7 @@ body {
       radial-gradient(ellipse 70% 30% at 90% 12%, rgba(14, 165, 233, 0.07), transparent 60%),
       radial-gradient(rgba(99, 102, 241, 0.08) 1.2px, transparent 1.2px);
     background-size: 100% 100%, 100% 100%, 22px 22px;
-    background-color: #fafcff;
+    background-color: #f8f9fa;
   }
   .dark .bg-grid-pattern {
     background-image: 

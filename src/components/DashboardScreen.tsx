@@ -32,6 +32,7 @@ import { FirstMockGuideBanner } from "./FirstMockGuideBanner";
 import { TargetScoreBanner } from "./TargetScoreBanner";
 import { RecentMocksFeedbackSection } from "./RecentMocksFeedbackSection";
 import { MockDetailModal } from "./MockDetailModal";
+import { SmartInsightSection } from "./SmartInsightSection";
 import {
   Doodle3DTarget,
   Doodle3DFlame,
@@ -517,7 +518,17 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         />
       </motion.div>
 
-      {/* 5. RECENT MOCKS LIST */}
+      {/* 5. SMART INSIGHT CARDS (Mistake-Driven Practice Recommendations) */}
+      <motion.div variants={shouldReduceMotion ? undefined : itemVariants} className="space-y-2">
+        <SmartInsightSection
+          activeExam={activeExam}
+          attempts={attempts}
+          onNavigateTab={onNavigateTab}
+          onOpenLogModal={onOpenLogModal}
+        />
+      </motion.div>
+
+      {/* 6. RECENT MOCKS LIST */}
       <motion.div variants={shouldReduceMotion ? undefined : itemVariants} className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-[11px] font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase">
