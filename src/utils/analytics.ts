@@ -394,9 +394,22 @@ export function calculateAnalytics(
 
 export function calculateDaysLeft(examDateStr?: string): number | null {
   if (!examDateStr) return null;
-  const examDate = new Date(examDateStr);
-  const now = new Date("2026-08-24T00:00:00");
-  const diffTime = examDate.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays > 0 ? diffDays : 0;
+  try {
+    const parts = examDateStr.split("-").map(Number);
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      const examDate = new Date(parts[0], parts[1] - 1, parts[2]);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const diffTime = examDate.getTime() - now.getTime();
+      return Math.round(diffTime / (1000 * 60 * 60 * 24));
+    }
+    const examDate = new Date(examDateStr);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    examDate.setHours(0, 0, 0, 0);
+    const diffTime = examDate.getTime() - now.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+  } catch {
+    return null;
+  }
 }

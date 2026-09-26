@@ -205,7 +205,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 mt-6 border-t border-white/10 text-xs">
           <div className="p-3 bg-white/5 rounded-xl border border-white/10">
             <div className="text-[10px] font-bold text-indigo-300 uppercase">Candidate</div>
-            <div className="text-sm font-black text-white truncate">{candidate.name}</div>
+            <div className="text-sm font-black text-white truncate italic font-display">{candidate.name}</div>
           </div>
           <div className="p-3 bg-white/5 rounded-xl border border-white/10">
             <div className="text-[10px] font-bold text-indigo-300 uppercase">Mocks Analyzed</div>

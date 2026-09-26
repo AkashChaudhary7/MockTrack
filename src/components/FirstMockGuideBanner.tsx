@@ -1,17 +1,5 @@
 import React from "react";
-import { motion } from "motion/react";
-import {
-  Sparkles,
-  Plus,
-  FileText,
-  Camera,
-  Link as LinkIcon,
-  CheckCircle2,
-  TrendingUp,
-  Target,
-  ShieldCheck,
-  ArrowRight,
-} from "lucide-react";
+import { Plus, Camera, Sparkles } from "lucide-react";
 import { ExamProfile } from "../types";
 import { HapticService } from "../services/HapticService";
 
@@ -21,109 +9,120 @@ interface FirstMockGuideBannerProps {
   onOpenOcrModal: () => void;
 }
 
+/**
+ * Handcrafted animated SVG vector illustration for First Mock Onboarding
+ */
+const FirstMockVectorIllustration: React.FC<{ size?: number }> = ({ size = 88 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 100 100"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="filter drop-shadow-sm select-none"
+  >
+    <defs>
+      <linearGradient id="sheet-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#FFFFFF" />
+        <stop offset="100%" stopColor="#F8FAFC" />
+      </linearGradient>
+      <linearGradient id="badge-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#6366F1" />
+        <stop offset="100%" stopColor="#4F46E5" />
+      </linearGradient>
+      <linearGradient id="star-g" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#FDE047" />
+        <stop offset="100%" stopColor="#F59E0B" />
+      </linearGradient>
+    </defs>
+    {/* Shadow */}
+    <ellipse cx="50" cy="92" rx="36" ry="6" fill="#1E1B4B" opacity="0.12" />
+    {/* Mock Sheet with folded corner */}
+    <path
+      d="M 24 16 C 24 12 28 8 32 8 L 62 8 L 76 22 L 76 80 C 76 84 72 88 68 88 L 32 88 C 28 88 24 84 24 80 Z"
+      fill="url(#sheet-grad)"
+      stroke="#CBD5E1"
+      strokeWidth="2"
+    />
+    {/* Fold corner */}
+    <path d="M 62 8 L 62 22 L 76 22 Z" fill="#E2E8F0" stroke="#CBD5E1" strokeWidth="1.5" />
+    {/* Exam Header Bar */}
+    <rect x="32" y="18" width="24" height="4" rx="2" fill="#4F46E5" />
+    {/* Content lines */}
+    <rect x="32" y="28" width="36" height="3" rx="1.5" fill="#E2E8F0" />
+    <rect x="32" y="36" width="30" height="3" rx="1.5" fill="#E2E8F0" />
+    <rect x="32" y="44" width="24" height="3" rx="1.5" fill="#E2E8F0" />
+    {/* Target Seal */}
+    <circle cx="56" cy="62" r="16" fill="url(#badge-grad)" />
+    <circle cx="56" cy="62" r="12" fill="#FFFFFF" />
+    <circle cx="56" cy="62" r="8" fill="#EF4444" />
+    <circle cx="56" cy="62" r="4" fill="#FFFFFF" />
+    {/* Gold Pencil */}
+    <g transform="translate(62, 44) rotate(42)">
+      <rect x="0" y="0" width="6" height="24" rx="1.5" fill="url(#star-g)" stroke="#D97706" strokeWidth="0.5" />
+      <polygon points="0,24 6,24 3,30" fill="#F87171" />
+      <polygon points="2,28 4,28 3,30" fill="#1E293B" />
+      <rect x="0" y="0" width="6" height="5" fill="#94A3B8" />
+    </g>
+    {/* Sparkles */}
+    <polygon points="18,30 20,24 22,30 28,32 22,34 20,40 18,34 12,32" fill="#FBBF24" />
+    <circle cx="82" cy="74" r="2.5" fill="#38BDF8" />
+  </svg>
+);
+
 export const FirstMockGuideBanner: React.FC<FirstMockGuideBannerProps> = ({
   activeExam,
   onOpenLogModal,
   onOpenOcrModal,
 }) => {
   return (
-    <div className="card-luminous rounded-3xl p-5 sm:p-6 space-y-4 border-2 border-indigo-500/20 relative overflow-hidden">
-      {/* Ambient background glow */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
+    <div className="card-luminous rounded-2xl p-4 sm:p-5 border border-indigo-200/80 dark:border-indigo-800/80 bg-gradient-to-r from-indigo-50/60 via-white to-amber-50/40 dark:from-indigo-950/30 dark:via-slate-900 dark:to-slate-800/80 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 relative overflow-hidden transition-all">
+      {/* SVG Vector Graphic */}
+      <div className="shrink-0 flex items-center justify-center p-2 rounded-2xl bg-white dark:bg-slate-800/90 border border-indigo-100 dark:border-indigo-900/60 shadow-2xs">
+        <FirstMockVectorIllustration size={76} />
+      </div>
 
-      {/* Top Tag & Title */}
-      <div className="relative z-10 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black font-display uppercase tracking-wider bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Get Started • Zero Mocks Logged</span>
-          </span>
-          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-            100% Private &amp; Offline
-          </span>
+      {/* Short, Sweet, Simple Message & CTAs */}
+      <div className="flex-1 min-w-0 text-center sm:text-left space-y-2">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
+          <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+          <span>Ready to Begin</span>
         </div>
 
-        <h2 className="text-lg sm:text-xl font-black font-display text-slate-900 dark:text-white tracking-tight leading-snug">
-          Log your first mock test for {activeExam.shortCode || activeExam.name}
-        </h2>
+        <h3 className="text-sm sm:text-base font-black font-display text-slate-900 dark:text-slate-100 leading-snug">
+          Log your first {activeExam.shortCode || activeExam.name} mock test
+        </h3>
 
-        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-xl">
-          Track your marks, negative penalties, and sectional percentiles across Testbook, Oliveboard, PW, or offline papers. Once you log your first mock, MockTrack will instantly generate your:
+        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium max-w-md">
+          Record your score to unlock your personal baseline, subject mastery radar, and negative penalty analysis.
         </p>
-      </div>
 
-      {/* 3 Quick Benefit Chips */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-        <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/70 dark:border-slate-800/80 flex items-start gap-2.5 shadow-2xs">
-          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
-            <Target className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-              Personal Baseline
-            </h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-tight mt-0.5">
-              Target gap to your {activeExam.targetScore || 160} marks goal.
-            </p>
-          </div>
+        {/* Clean, Single-Line SVG Action Buttons */}
+        <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              HapticService.selection();
+              onOpenLogModal();
+            }}
+            className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black text-xs rounded-xl cursor-pointer transition-all shadow-sm shadow-indigo-600/20 inline-flex items-center gap-1.5 font-display"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Log Mock Score</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              HapticService.lightTap();
+              onOpenOcrModal();
+            }}
+            className="px-3.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl cursor-pointer border border-slate-200/80 dark:border-slate-700 transition-all inline-flex items-center gap-1.5 font-display"
+          >
+            <Camera className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Scan Scorecard</span>
+          </button>
         </div>
-
-        <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/70 dark:border-slate-800/80 flex items-start gap-2.5 shadow-2xs">
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-            <TrendingUp className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-              Accuracy &amp; Penalty
-            </h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-tight mt-0.5">
-              Identify marks lost to negative guessing.
-            </p>
-          </div>
-        </div>
-
-        <div className="p-3 bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/70 dark:border-slate-800/80 flex items-start gap-2.5 shadow-2xs">
-          <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-              Subject Radar
-            </h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-tight mt-0.5">
-              Spot your strongest and weakest topics.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Action Buttons: Manual + Scan */}
-      <div className="relative z-10 pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-        <button
-          type="button"
-          onClick={() => {
-            HapticService.selection();
-            onOpenLogModal();
-          }}
-          className="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white rounded-2xl text-xs sm:text-sm font-black font-display shadow-md shadow-indigo-600/30 transition-all cursor-pointer flex items-center justify-center gap-2"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Log Your First Mock Test</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            HapticService.lightTap();
-            onOpenOcrModal();
-          }}
-          className="py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-[0.98] text-slate-800 dark:text-slate-200 rounded-2xl text-xs sm:text-sm font-bold font-display border border-slate-200/80 dark:border-slate-700 transition-all cursor-pointer flex items-center justify-center gap-2"
-        >
-          <Camera className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          <span>Scan Scorecard Photo</span>
-        </button>
       </div>
     </div>
   );

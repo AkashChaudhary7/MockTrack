@@ -39,6 +39,8 @@ import { StorageService } from "./services/StorageService";
 import { firePersonalBestConfetti } from "./utils/confetti";
 import { HapticService } from "./services/HapticService";
 import { ScoreCardModal } from "./components/ScoreCardModal";
+import { AppWalkthroughModal } from "./components/AppWalkthroughModal";
+import { SvgHighScoreSparkle } from "./components/SvgHighScoreSparkle";
 import { detectMilestoneOnMockSave, MilestoneEvent } from "./utils/milestones";
 
 export default function App() {
@@ -86,6 +88,7 @@ export default function App() {
                 hasParts: p.hasParts ?? catalogMatch.hasParts,
                 parts: p.parts || catalogMatch.parts,
                 subjects: p.subjects && p.subjects.length > 0 ? p.subjects : catalogMatch.subjects,
+                examDate: p.examDate && p.examDate !== "2026-09-17" ? p.examDate : (catalogMatch.examDate || "2026-11-20"),
               };
             }
             return p;
@@ -169,6 +172,20 @@ export default function App() {
   const [isScoreCardOpen, setIsScoreCardOpen] = useState<boolean>(false);
   const [scoreCardMilestoneTitle, setScoreCardMilestoneTitle] = useState<string | undefined>(undefined);
   const [activeMilestone, setActiveMilestone] = useState<MilestoneEvent | null>(null);
+  const [highScoreSparkle, setHighScoreSparkle] = useState<{
+    isOpen: boolean;
+    examName: string;
+    newScore: number;
+    prevScore?: number;
+    maxMarks: number;
+  } | null>(null);
+  const [isWalkthroughOpen, setIsWalkthroughOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const seen = localStorage.getItem("mocktrack_has_seen_walkthrough");
+      return !seen;
+    }
+    return false;
+  });
 
   // Hydrate from IndexedDB on initial load
   useEffect(() => {
@@ -386,11 +403,25 @@ export default function App() {
       const milestone = detectMilestoneOnMockSave(attempts, newAttempt, activeExam);
       if (milestone) {
         setActiveMilestone(milestone);
-        if (milestone.type === "personal_best") {
+        if (milestone.type === "personal_best" || isNewPersonalBest) {
+          setHighScoreSparkle({
+            isOpen: true,
+            examName: activeExam.name,
+            newScore: newAttempt.score,
+            prevScore: prevMax > 0 && prevMax !== -Infinity ? prevMax : undefined,
+            maxMarks: newAttempt.maxMarks,
+          });
           firePersonalBestConfetti();
         }
         HapticService.achievement();
       } else if (isNewPersonalBest) {
+        setHighScoreSparkle({
+          isOpen: true,
+          examName: activeExam.name,
+          newScore: newAttempt.score,
+          prevScore: prevMax > 0 && prevMax !== -Infinity ? prevMax : undefined,
+          maxMarks: newAttempt.maxMarks,
+        });
         firePersonalBestConfetti();
         HapticService.achievement();
       } else {
@@ -425,6 +456,13 @@ export default function App() {
     );
 
     if (isNewPersonalBest) {
+      setHighScoreSparkle({
+        isOpen: true,
+        examName: activeExam.name,
+        newScore: maxImportedScore,
+        prevScore: prevMax > 0 && prevMax !== -Infinity ? prevMax : undefined,
+        maxMarks: activeExam.totalMarks,
+      });
       firePersonalBestConfetti();
       HapticService.achievement();
     } else {
@@ -577,6 +615,7 @@ export default function App() {
           onOpenProfileSwitcher={() => setIsProfileSwitcherOpen(true)}
           onOpenSetDateModal={() => setIsSetDateOpen(true)}
           onNavigateTab={setActiveTab}
+          onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
         />
 
         {/* PWA Install Banner */}
@@ -606,6 +645,7 @@ export default function App() {
               onOpenScoreCard={handleOpenScoreCard}
               activeMilestone={activeMilestone}
               onDismissMilestone={() => setActiveMilestone(null)}
+              onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
             />
           )}
 
@@ -687,6 +727,7 @@ export default function App() {
               onImportData={handleImportData}
               onClearAllData={handleClearAllData}
               onNavigateTab={setActiveTab}
+              onOpenWalkthrough={() => setIsWalkthroughOpen(true)}
             />
           )}
 
@@ -795,6 +836,28 @@ export default function App() {
             activeExam={activeExam}
             attempts={attempts}
             milestoneTitle={scoreCardMilestoneTitle}
+          />
+        )}
+
+        {/* App Walkthrough / Start Tutorials Modal */}
+        <AppWalkthroughModal
+          isOpen={isWalkthroughOpen}
+          onClose={() => setIsWalkthroughOpen(false)}
+          onStartLogging={() => {
+            setEditingAttempt(undefined);
+            setActiveTab("log");
+          }}
+        />
+
+        {/* High Score Confetti & SVG Success Sparkle Celebration */}
+        {highScoreSparkle && (
+          <SvgHighScoreSparkle
+            isOpen={highScoreSparkle.isOpen}
+            onClose={() => setHighScoreSparkle(null)}
+            examName={highScoreSparkle.examName}
+            newScore={highScoreSparkle.newScore}
+            prevScore={highScoreSparkle.prevScore}
+            maxMarks={highScoreSparkle.maxMarks}
           />
         )}
       </div>

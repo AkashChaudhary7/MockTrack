@@ -138,7 +138,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <div className="min-w-0">
               {/* Identity Row: User Name + Edit icon */}
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 truncate">
+                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 truncate italic font-display">
                   {candidate.name}
                 </h1>
 

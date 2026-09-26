@@ -742,11 +742,16 @@ export const LogMockScreen: React.FC<LogMockScreenProps> = ({
           </button>
 
           <div>
-            <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-slate-100 tracking-tight">
-              Log Mock Test
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-              Select how you want to log your test for {activeExam.shortCode || activeExam.name}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-slate-100 tracking-tight">
+                Log Mock Test
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 shrink-0">
+                {activeExam.shortCode || activeExam.name}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+              Select your logging method
             </p>
           </div>
         </div>

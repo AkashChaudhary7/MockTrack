@@ -20,6 +20,11 @@ import {
   FileSpreadsheet,
   FileText,
   Eye,
+  BookOpen,
+  BarChart3,
+  Check,
+  X,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useTranslation } from "../i18n/LanguageContext";
 import { FileService } from "../services/FileService";
@@ -29,7 +34,9 @@ import { EmptyState } from "./EmptyState";
 import { PlatformLogo } from "./PlatformLogo";
 import { BulkLogModal } from "./BulkLogModal";
 import { MockDetailModal } from "./MockDetailModal";
+import { MockComparisonModal } from "./MockComparisonModal";
 import { Doodle3DScorecard, Doodle3DTarget } from "./Doodles3D";
+import { MascotCharacter } from "./MascotCharacter";
 
 interface HistoryScreenProps {
   attempts: MockAttempt[];
@@ -62,6 +69,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<string>("all");
+  const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [selectedTestType, setSelectedTestType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -69,9 +77,82 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   const [isDataMenuOpen, setIsDataMenuOpen] = useState<boolean>(false);
   const [selectedMockForDetail, setSelectedMockForDetail] = useState<MockAttempt | null>(null);
 
+  // Visual Comparison State
+  const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
+  const [selectedCompareIds, setSelectedCompareIds] = useState<string[]>([]);
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState<boolean>(false);
+
   const examMocks = useMemo(() => {
     return attempts.filter((a) => a.profileId === activeExam.id);
   }, [attempts, activeExam.id]);
+
+  // Toggle mock selection for comparison (max 2)
+  const handleToggleCompareSelection = (mockId: string) => {
+    HapticService.selection();
+    setSelectedCompareIds((prev) => {
+      if (prev.includes(mockId)) {
+        return prev.filter((id) => id !== mockId);
+      }
+      if (prev.length >= 2) {
+        // If already 2 selected, replace the second one
+        return [prev[0], mockId];
+      }
+      return [...prev, mockId];
+    });
+  };
+
+  const handleOpenComparison = () => {
+    if (selectedCompareIds.length === 2) {
+      HapticService.achievement();
+      setIsComparisonModalOpen(true);
+    }
+  };
+
+  const handleExitCompareMode = () => {
+    HapticService.lightTap();
+    setIsCompareMode(false);
+    setSelectedCompareIds([]);
+  };
+
+  // Selected mock objects for comparison
+  const mockA = useMemo(
+    () => attempts.find((m) => m.id === selectedCompareIds[0]),
+    [attempts, selectedCompareIds]
+  );
+  const mockB = useMemo(
+    () => attempts.find((m) => m.id === selectedCompareIds[1]),
+    [attempts, selectedCompareIds]
+  );
+
+  // Extract all unique available subjects for this exam & attempts
+  const availableSubjects = useMemo(() => {
+    const subjectMap = new Map<string, number>();
+
+    // From activeExam config
+    if (activeExam.subjects && activeExam.subjects.length > 0) {
+      activeExam.subjects.forEach((s) => {
+        if (s.name && !subjectMap.has(s.name)) {
+          subjectMap.set(s.name, 0);
+        }
+      });
+    }
+
+    // Tally occurrence in actual mock attempts
+    examMocks.forEach((mock) => {
+      if (mock.sections && mock.sections.length > 0) {
+        mock.sections.forEach((sec) => {
+          if (sec.name) {
+            subjectMap.set(sec.name, (subjectMap.get(sec.name) || 0) + 1);
+          }
+        });
+      }
+    });
+
+    return Array.from(subjectMap.entries()).map(([name, count]) => ({
+      name,
+      count,
+    }));
+  }, [activeExam.subjects, examMocks]);
 
   // Quick Filter Counts
   const quickFilterCounts = useMemo(() => {
@@ -148,6 +229,18 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         if (selectedPlatform !== "all" && mock.platform !== selectedPlatform) {
           return false;
         }
+        // Subject filter (allows users to view attempts by specific subjects)
+        if (selectedSubject !== "all") {
+          const subLower = selectedSubject.toLowerCase();
+          const hasSection = (mock.sections || []).some(
+            (sec) => sec.name.toLowerCase() === subLower
+          );
+          const hasTitle = mock.title.toLowerCase().includes(subLower);
+          const hasWeak = (mock.weakAreas || []).some((w) =>
+            w.toLowerCase().includes(subLower)
+          );
+          if (!hasSection && !hasTitle && !hasWeak) return false;
+        }
         // Test type filter
         if (selectedTestType !== "all" && mock.testType !== selectedTestType) {
           return false;
@@ -178,7 +271,45 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         // Default: newest first
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       });
-  }, [examMocks, searchTerm, selectedPlatform, selectedTestType, sortBy, activeExam]);
+  }, [examMocks, searchTerm, selectedPlatform, selectedSubject, selectedTestType, sortBy, activeExam]);
+
+  // Subject-specific granular diagnostics when a subject is filtered
+  const subjectStats = useMemo(() => {
+    if (selectedSubject === "all") return null;
+    const subLower = selectedSubject.toLowerCase();
+    const matchingSections: { score: number; maxMarks: number; accuracy?: number }[] = [];
+
+    filteredMocks.forEach((m) => {
+      const sec = (m.sections || []).find((s) => s.name.toLowerCase() === subLower);
+      if (sec) {
+        matchingSections.push({
+          score: sec.score,
+          maxMarks: sec.maxMarks,
+          accuracy: sec.accuracy,
+        });
+      }
+    });
+
+    if (matchingSections.length === 0) return null;
+
+    const totalSubScore = matchingSections.reduce((acc, s) => acc + s.score, 0);
+    const avgSubScore = Math.round((totalSubScore / matchingSections.length) * 10) / 10;
+    const bestSubScore = Math.max(...matchingSections.map((s) => s.score));
+    const maxMarks = matchingSections[0]?.maxMarks || 50;
+    const accuracies = matchingSections.filter((s) => typeof s.accuracy === "number").map((s) => s.accuracy!);
+    const avgAccuracy = accuracies.length > 0 
+      ? Math.round(accuracies.reduce((a, b) => a + b, 0) / accuracies.length)
+      : Math.round((avgSubScore / maxMarks) * 100);
+
+    return {
+      name: selectedSubject,
+      count: matchingSections.length,
+      avgScore: avgSubScore,
+      bestScore: bestSubScore,
+      maxMarks,
+      avgAccuracy,
+    };
+  }, [selectedSubject, filteredMocks]);
 
   const handleExportCSV = () => {
     HapticService.lightTap();
@@ -277,6 +408,34 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Visual Comparison Toggle Button */}
+          <button
+            type="button"
+            onClick={() => {
+              HapticService.lightTap();
+              if (isCompareMode) {
+                handleExitCompareMode();
+              } else {
+                setIsCompareMode(true);
+              }
+            }}
+            disabled={examMocks.length < 2}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-black flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 transition-all ${
+              isCompareMode
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/30"
+                : "bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/80 dark:border-slate-800"
+            } disabled:opacity-40`}
+            title={examMocks.length < 2 ? "Log at least 2 mocks to compare" : "Visual Mock Comparison"}
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+            <span>{isCompareMode ? "Comparing" : "Compare"}</span>
+            {isCompareMode && selectedCompareIds.length > 0 && (
+              <span className="w-4 h-4 rounded-full bg-white text-indigo-700 text-[10px] font-black flex items-center justify-center">
+                {selectedCompareIds.length}
+              </span>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={handleExportPDF}
@@ -363,8 +522,29 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
           />
         </div>
 
-        {/* Platform and Sorting controls */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Platform, Subject, and Sorting controls */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {/* Subject Filter (Specific subject breakdown review) */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
+            <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <select
+              value={selectedSubject}
+              onChange={(e) => {
+                HapticService.lightTap();
+                setSelectedSubject(e.target.value);
+              }}
+              className="w-full bg-transparent font-extrabold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer text-xs truncate"
+              title="Filter by Subject"
+            >
+              <option value="all">All Subjects</option>
+              {availableSubjects.map((sub) => (
+                <option key={sub.name} value={sub.name}>
+                  {sub.name} {sub.count > 0 ? `(${sub.count})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Platform Filter */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs">
             <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -404,6 +584,95 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
         </div>
       </div>
 
+      {/* 4.5. Granular Subject Diagnostic Banner (Visible when subject is filtered) */}
+      {selectedSubject !== "all" && subjectStats && (
+        <div className="card-luminous rounded-2xl p-3.5 sm:p-4 border border-indigo-200/80 dark:border-indigo-800/70 bg-gradient-to-r from-indigo-50/70 via-white to-blue-50/50 dark:from-indigo-950/40 dark:via-slate-900 dark:to-blue-950/20 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="shrink-0 hidden sm:block">
+              <MascotCharacter pose="analyzing" size={56} />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                  Subject Breakdown
+                </span>
+                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-display">
+                  {selectedSubject}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 font-bold flex-wrap tabular-nums pt-0.5">
+                <span>{subjectStats.count} Attempts</span>
+                <span>•</span>
+                <span>Avg: <strong className="text-indigo-600 dark:text-indigo-400">{subjectStats.avgScore}</strong>/{subjectStats.maxMarks}</span>
+                <span>•</span>
+                <span>PB: <strong className="text-emerald-600 dark:text-emerald-400">{subjectStats.bestScore}</strong>/{subjectStats.maxMarks}</span>
+                <span>•</span>
+                <span>Acc: <strong className="text-slate-800 dark:text-slate-200">{subjectStats.avgAccuracy}%</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              HapticService.lightTap();
+              setSelectedSubject("all");
+            }}
+            className="px-2.5 py-1 text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100/70 dark:hover:bg-indigo-950 rounded-lg transition-colors cursor-pointer shrink-0"
+          >
+            Clear Filter
+          </button>
+        </div>
+      )}
+
+      {/* 4.7. Visual Mock Comparison Active Banner */}
+      {isCompareMode && (
+        <div className="card-luminous rounded-2xl p-3.5 sm:p-4 border-2 border-indigo-500/80 dark:border-indigo-500/80 bg-gradient-to-r from-indigo-50/90 via-white to-emerald-50/70 dark:from-indigo-950/60 dark:via-slate-900 dark:to-emerald-950/40 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 rounded-xl bg-indigo-600 text-white shrink-0 shadow-xs">
+              <ArrowLeftRight className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 font-display">
+                  Select 2 Mocks to Compare
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  {selectedCompareIds.length} / 2 Selected
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                {selectedCompareIds.length === 0
+                  ? "Tap any 2 attempts below to compare their scores and sectional breakdown."
+                  : selectedCompareIds.length === 1
+                  ? "Selected 1 mock! Now tap a second mock attempt to compare."
+                  : "Both selected! Click Compare Side-by-Side to see scores and bar charts."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 justify-end">
+            <button
+              type="button"
+              onClick={handleOpenComparison}
+              disabled={selectedCompareIds.length !== 2}
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-sm shadow-indigo-600/30 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all font-display"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Compare Side-by-Side</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExitCompareMode}
+              className="px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 5. Mock Records List */}
       {filteredMocks.length === 0 ? (
         <EmptyState
@@ -423,15 +692,52 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             const targetScore = activeExam.targetScore || Math.round(activeExam.totalMarks * 0.75);
             const targetDiff = Math.round((mock.score - targetScore) * 10) / 10;
             const isTargetReached = targetDiff >= 0;
+            const isSelectedForCompare = selectedCompareIds.includes(mock.id);
+            const compareIndex = selectedCompareIds.indexOf(mock.id);
 
             return (
               <div
                 key={mock.id}
-                className="card-luminous rounded-2xl p-4 sm:p-5 transition-all space-y-3 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md relative overflow-hidden"
+                onClick={() => {
+                  if (isCompareMode) {
+                    handleToggleCompareSelection(mock.id);
+                  }
+                }}
+                className={`card-luminous rounded-2xl p-4 sm:p-5 transition-all space-y-3 relative overflow-hidden ${
+                  isCompareMode
+                    ? isSelectedForCompare
+                      ? "ring-2 ring-indigo-500 border-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/30 shadow-md cursor-pointer"
+                      : "hover:border-indigo-300 dark:hover:border-indigo-700 cursor-pointer"
+                    : "hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md"
+                }`}
               >
                 {/* Header Row */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
+                    {/* Compare Selection Checkbox Pill */}
+                    {isCompareMode && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleCompareSelection(mock.id);
+                        }}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer ${
+                          isSelectedForCompare
+                            ? "bg-indigo-600 border-indigo-600 text-white shadow-xs scale-105"
+                            : "border-slate-300 dark:border-slate-600 hover:border-indigo-400 bg-white dark:bg-slate-800"
+                        }`}
+                        title={isSelectedForCompare ? "Deselect" : "Select for comparison"}
+                      >
+                        {isSelectedForCompare ? (
+                          <span className="text-[11px] font-black font-display">
+                            {compareIndex + 1}
+                          </span>
+                        ) : (
+                          <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
+                        )}
+                      </div>
+                    )}
+
                     <PlatformLogo platformId={mock.platform} size="lg" />
                     <div className="min-w-0">
                       <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 truncate">
@@ -470,6 +776,29 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Granular Subject Performance Highlight when filtered */}
+                {selectedSubject !== "all" && (() => {
+                  const sec = (mock.sections || []).find(
+                    (s) => s.name.toLowerCase() === selectedSubject.toLowerCase()
+                  );
+                  if (!sec) return null;
+                  const secPct = sec.maxMarks > 0 ? Math.round((sec.score / sec.maxMarks) * 100) : 0;
+                  return (
+                    <div className="p-2.5 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-indigo-900 dark:text-indigo-200">
+                        <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span>{selectedSubject} Score:</span>
+                      </div>
+                      <div className="font-display font-black text-indigo-700 dark:text-indigo-300 tabular-nums">
+                        {sec.score} / {sec.maxMarks}{" "}
+                        <span className="text-[11px] font-sans font-bold text-indigo-500 dark:text-indigo-400">
+                          ({sec.accuracy !== undefined ? sec.accuracy : secPct}% accuracy)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Sub Stats Badges */}
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-extrabold text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800/80">
@@ -525,22 +854,54 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                   </div>
                 )}
 
-                {/* Card Controls with View Details */}
+                {/* Card Controls with View Details & Compare */}
                 <div className="flex items-center justify-between pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      HapticService.selection();
-                      setSelectedMockForDetail(mock);
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/60 dark:border-slate-700 text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>View Details</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        HapticService.selection();
+                        setSelectedMockForDetail(mock);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/60 dark:border-slate-700 text-xs font-black flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>View Details</span>
+                    </button>
+
+                    {/* Quick Compare Trigger from individual card */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        HapticService.selection();
+                        if (!isCompareMode) {
+                          setIsCompareMode(true);
+                          setSelectedCompareIds([mock.id]);
+                        } else {
+                          handleToggleCompareSelection(mock.id);
+                        }
+                      }}
+                      className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition-all ${
+                        isSelectedForCompare
+                          ? "bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700"
+                          : "bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border-slate-200/60 dark:border-slate-700"
+                      }`}
+                      title="Compare this mock with another"
+                    >
+                      <ArrowLeftRight className="w-3 h-3 text-indigo-500" />
+                      <span className="hidden sm:inline">
+                        {isSelectedForCompare ? "Selected" : "Compare"}
+                      </span>
+                    </button>
+                  </div>
 
                   {deleteConfirmId === mock.id ? (
-                    <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/70 p-1.5 rounded-2xl border border-rose-200 dark:border-rose-800">
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/70 p-1.5 rounded-2xl border border-rose-200 dark:border-rose-800"
+                    >
                       <span className="text-xs font-black text-rose-700 dark:text-rose-300">
                         Delete?
                       </span>
@@ -560,7 +921,10 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 ml-auto">
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 ml-auto"
+                    >
                       <button
                         onClick={() => {
                           HapticService.lightTap();
@@ -588,6 +952,17 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             );
           })}
         </div>
+      )}
+
+      {/* Visual Mock Comparison Side-by-Side Modal */}
+      {isComparisonModalOpen && mockA && mockB && (
+        <MockComparisonModal
+          isOpen={isComparisonModalOpen}
+          onClose={() => setIsComparisonModalOpen(false)}
+          mockA={mockA}
+          mockB={mockB}
+          activeExam={activeExam}
+        />
       )}
 
       {/* Mock Detail Pop-up Modal */}

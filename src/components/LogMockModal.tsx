@@ -980,13 +980,13 @@ export const LogMockModal: React.FC<LogMockModalProps> = ({
 
             <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
 
-            <div>
+            <div className="flex items-center gap-2">
               <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight">
                 Log Mock
               </h3>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800 shrink-0">
                 {selectedExamName}
-              </p>
+              </span>
             </div>
           </div>
 

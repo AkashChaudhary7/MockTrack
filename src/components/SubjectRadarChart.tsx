@@ -1,5 +1,14 @@
-import React, { useState } from "react";
-import { Target, AlertCircle, CheckCircle2, TrendingUp, HelpCircle } from "lucide-react";
+import React from "react";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+import { Target, AlertTriangle, CheckCircle2, TrendingUp, Sparkles } from "lucide-react";
 
 export interface SubjectMetric {
   name: string;
@@ -13,314 +22,196 @@ export interface SubjectMetric {
 
 interface SubjectRadarChartProps {
   metrics: SubjectMetric[];
+  title?: string;
+  subtitle?: string;
+  compact?: boolean;
 }
 
-export const SubjectRadarChart: React.FC<SubjectRadarChartProps> = ({ metrics }) => {
-  const [selectedSubject, setSelectedSubject] = useState<SubjectMetric | null>(
-    metrics[0] || null
-  );
+// Custom tooltip for clean, accessible inspection
+const CustomRadarTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-slate-900 text-white dark:bg-slate-800 border border-slate-700 p-2.5 rounded-xl shadow-xl text-xs space-y-1 z-50">
+        <span className="font-black text-indigo-300 block font-display">
+          {data.fullName || data.subject}
+        </span>
+        <div className="flex items-center justify-between gap-3 text-[11px] tabular-nums font-mono">
+          <span className="text-slate-400">Mastery:</span>
+          <span className="font-black text-white">{data.score}%</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-[11px] tabular-nums font-mono">
+          <span className="text-slate-400">Avg Marks:</span>
+          <span className="font-bold text-emerald-400">{data.scoreAvg}/{data.maxAvg}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-[11px] tabular-nums font-mono">
+          <span className="text-slate-400">Accuracy:</span>
+          <span className="font-bold text-sky-400">{data.accuracy}%</span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
-  // Dynamic axis configuration adapting to any number of subjects in active exam profile
-  const subjects = React.useMemo(() => {
+export const SubjectRadarChart: React.FC<SubjectRadarChartProps> = ({
+  metrics,
+  title = "Subject Mastery Radar",
+  subtitle = "Sectional proficiency balance across all subjects",
+  compact = false,
+}) => {
+  // Format data for Recharts RadarChart
+  const radarData = React.useMemo(() => {
     if (!metrics || metrics.length === 0) {
       return [
-        { name: "Quantitative Aptitude", label: "Quant", angle: -90 },
-        { name: "Reasoning Ability", label: "Reasoning", angle: 0 },
-        { name: "English Comprehension", label: "English", angle: 90 },
-        { name: "General Awareness", label: "GA", angle: 180 },
+        { subject: "Quant", fullName: "Quantitative Aptitude", score: 0, target: 80, accuracy: 0, scoreAvg: 0, maxAvg: 50 },
+        { subject: "Reasoning", fullName: "Reasoning Ability", score: 0, target: 80, accuracy: 0, scoreAvg: 0, maxAvg: 50 },
+        { subject: "English", fullName: "English Comprehension", score: 0, target: 80, accuracy: 0, scoreAvg: 0, maxAvg: 50 },
+        { subject: "GA", fullName: "General Awareness", score: 0, target: 80, accuracy: 0, scoreAvg: 0, maxAvg: 50 },
       ];
     }
-    const count = metrics.length;
-    return metrics.map((m, idx) => {
-      const angle = (idx * 360) / count - 90;
-      // Concise label
-      let label = m.name;
-      if (label.length > 14) {
-        label = label.slice(0, 12) + "…";
-      }
+
+    return metrics.map((m) => {
+      // Shorten label for neat radial placement
+      let shortLabel = m.name;
+      if (shortLabel.toLowerCase().includes("quant")) shortLabel = "Quant";
+      else if (shortLabel.toLowerCase().includes("reason")) shortLabel = "Reasoning";
+      else if (shortLabel.toLowerCase().includes("english")) shortLabel = "English";
+      else if (shortLabel.toLowerCase().includes("general aware") || shortLabel.toLowerCase().includes("ga")) shortLabel = "GA";
+      else if (shortLabel.length > 12) shortLabel = shortLabel.slice(0, 10) + "…";
+
       return {
-        name: m.name,
-        label,
-        angle,
+        subject: shortLabel,
+        fullName: m.name,
+        score: Math.round(m.percentage),
+        target: 75, // 75% target benchmark cut-off
+        accuracy: m.accuracy,
+        scoreAvg: m.scoreAvg,
+        maxAvg: m.maxAvg,
+        status: m.status,
       };
     });
   }, [metrics]);
 
-  const size = 280;
-  const cx = size / 2;
-  const cy = size / 2;
-  const maxRadius = 90;
-
-  // Map metric to angle
-  const getSubjectMetric = (name: string): SubjectMetric => {
-    return (
-      metrics.find(
-        (m) =>
-          m.name.toLowerCase().includes(name.toLowerCase()) ||
-          name.toLowerCase().includes(m.name.toLowerCase())
-      ) || {
-        name,
-        scoreAvg: 0,
-        maxAvg: 50,
-        percentage: 0,
-        accuracy: 0,
-        status: "Needs Improvement",
-        colorClass: "bg-red-500 text-red-600",
-      }
-    );
-  };
-
-  // Convert polar coordinates (angle in degrees, radius) to Cartesian (x, y)
-  const polarToCartesian = (angleInDegrees: number, radius: number) => {
-    const angleInRadians = (angleInDegrees * Math.PI) / 180;
-    return {
-      x: cx + radius * Math.cos(angleInRadians),
-      y: cy + radius * Math.sin(angleInRadians),
-    };
-  };
-
-  // Concentric ring levels
-  const rings = [0.25, 0.5, 0.75, 1.0];
-
-  // Calculate polygon points
-  const polygonPoints = subjects
-    .map((s) => {
-      const metric = getSubjectMetric(s.name);
-      const valueRatio = Math.min(Math.max(metric.percentage / 100, 0.05), 1);
-      const pt = polarToCartesian(s.angle, maxRadius * valueRatio);
-      return `${pt.x},${pt.y}`;
-    })
-    .join(" ");
+  // Identify Weakest and Strongest Areas
+  const sortedByScore = [...metrics].sort((a, b) => a.percentage - b.percentage);
+  const weakestArea = sortedByScore[0];
+  const strongestArea = sortedByScore[sortedByScore.length - 1];
 
   return (
-    <div className="card-luminous rounded-2xl p-5 transition-colors">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="text-base font-black font-display text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <Target className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            Subject Mastery Radar
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            4-Section Strength &amp; Weakness Polar Analysis
-          </p>
-        </div>
-        <span className="text-xs font-black font-display px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-          Tier 1 Core
-        </span>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-        {/* Radar SVG */}
-        <div className="relative flex flex-col items-center justify-center p-2">
-          <svg
-            width={size}
-            height={size}
-            className="overflow-visible drop-shadow-sm"
-          >
-            {/* Background Grid Rings */}
-            {rings.map((ring, idx) => {
-              const r = maxRadius * ring;
-              const points = subjects
-                .map((s) => {
-                  const pt = polarToCartesian(s.angle, r);
-                  return `${pt.x},${pt.y}`;
-                })
-                .join(" ");
-
-              return (
-                <g key={idx}>
-                  <polygon
-                    points={points}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    className="text-slate-200 dark:text-slate-800"
-                    strokeDasharray={idx < 3 ? "3 3" : "none"}
-                  />
-                  {/* Benchmark percentage label along top axis */}
-                  <text
-                    x={cx + 4}
-                    y={cy - r + 3}
-                    className="text-[9px] fill-slate-400 dark:fill-slate-500 font-mono font-medium"
-                  >
-                    {Math.round(ring * 100)}%
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Axes lines */}
-            {subjects.map((s, i) => {
-              const outerPt = polarToCartesian(s.angle, maxRadius);
-              return (
-                <line
-                  key={i}
-                  x1={cx}
-                  y1={cy}
-                  x2={outerPt.x}
-                  y2={outerPt.y}
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  className="text-slate-300 dark:text-slate-700"
-                />
-              );
-            })}
-
-            {/* Candidate Performance Filled Polygon */}
-            <polygon
-              points={polygonPoints}
-              className="fill-indigo-500/25 dark:fill-indigo-500/35 stroke-indigo-600 dark:stroke-indigo-400"
-              strokeWidth="2.5"
-              strokeLinejoin="round"
-            />
-
-            {/* Vertex Point Markers */}
-            {subjects.map((s, idx) => {
-              const metric = getSubjectMetric(s.name);
-              const valueRatio = Math.min(Math.max(metric.percentage / 100, 0.05), 1);
-              const pt = polarToCartesian(s.angle, maxRadius * valueRatio);
-              const isSelected = selectedSubject?.name.toLowerCase().includes(s.name.toLowerCase());
-
-              return (
-                <g
-                  key={idx}
-                  onClick={() => setSelectedSubject(metric)}
-                  className="cursor-pointer group"
-                >
-                  <circle
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={isSelected ? "7" : "5"}
-                    className={`${
-                      isSelected
-                        ? "fill-indigo-600 dark:fill-indigo-400 stroke-white dark:stroke-slate-900"
-                        : "fill-white dark:fill-slate-900 stroke-indigo-600 dark:stroke-indigo-400 group-hover:scale-125"
-                    } transition-all duration-200`}
-                    strokeWidth="2.5"
-                  />
-                </g>
-              );
-            })}
-
-            {/* Subject Outer Labels */}
-            {subjects.map((s, idx) => {
-              const labelRadius = maxRadius + 24;
-              const pt = polarToCartesian(s.angle, labelRadius);
-              const metric = getSubjectMetric(s.name);
-              const isSelected = selectedSubject?.name.toLowerCase().includes(s.name.toLowerCase());
-
-              let textAnchor = "middle";
-              if (s.angle === 0) textAnchor = "start";
-              if (s.angle === 180) textAnchor = "end";
-
-              return (
-                <g
-                  key={idx}
-                  onClick={() => setSelectedSubject(metric)}
-                  className="cursor-pointer select-none"
-                >
-                  <text
-                    x={pt.x}
-                    y={pt.y}
-                    textAnchor={textAnchor}
-                    className={`text-[11px] font-bold ${
-                      isSelected
-                        ? "fill-indigo-600 dark:fill-indigo-400 font-extrabold"
-                        : "fill-slate-700 dark:fill-slate-300 hover:fill-indigo-600"
-                    }`}
-                  >
-                    {s.label}
-                  </text>
-                  <text
-                    x={pt.x}
-                    y={pt.y + 12}
-                    textAnchor={textAnchor}
-                    className="text-[10px] font-semibold fill-slate-500 dark:fill-slate-400"
-                  >
-                    {metric.percentage}%
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-
-        {/* Selected Subject Breakdown Card */}
-        {selectedSubject && (
-          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  Selected Section
-                </span>
-                <span
-                  className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    selectedSubject.percentage >= 80
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                      : selectedSubject.percentage >= 65
-                      ? "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300"
-                      : selectedSubject.percentage >= 50
-                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                      : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
-                  }`}
-                >
-                  {selectedSubject.status}
-                </span>
-              </div>
-
-              <h4 className="text-base font-black font-display text-slate-900 dark:text-slate-100 mt-1">
-                {selectedSubject.name}
-              </h4>
-
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    Avg Marks
-                  </span>
-                  <div className="text-base font-black font-display text-slate-900 dark:text-slate-100 mt-0.5">
-                    {selectedSubject.scoreAvg} <span className="text-xs text-slate-400 font-normal font-sans">/ {selectedSubject.maxAvg}</span>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    Accuracy
-                  </span>
-                  <div className="text-base font-black font-display text-indigo-600 dark:text-indigo-400 mt-0.5">
-                    {selectedSubject.accuracy || Math.round(selectedSubject.percentage * 0.95)}%
-                  </div>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mt-3">
-                <div className="flex justify-between text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                  <span>Score Efficiency</span>
-                  <span className="font-bold">{selectedSubject.percentage}%</span>
-                </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-300"
-                    style={{ width: `${selectedSubject.percentage}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Strategic Advice */}
-            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/60 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
-              <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
-              <p>
-                {selectedSubject.percentage >= 80
-                  ? "Top tier performance! Maintain pace by practicing speed tests and sectional mocks."
-                  : selectedSubject.percentage >= 60
-                  ? "Good baseline. Target specific weak sub-topics to bridge the remaining 20% score gap."
-                  : "Requires immediate attention! Log mistake takeaways in the Review tab to eliminate speed traps."}
-              </p>
-            </div>
+    <div className="card-luminous rounded-2xl p-4 sm:p-5 space-y-3 relative overflow-hidden transition-all">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200/80 dark:border-indigo-800">
+            <Target className="w-4 h-4" />
           </div>
-        )}
+          <div>
+            <h3 className="text-sm sm:text-base font-black font-display text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <span>{title}</span>
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              {subtitle}
+            </p>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-3 text-[11px] font-bold text-slate-600 dark:text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+            <span>Your Mastery</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-0.5 border-t border-dashed border-emerald-500" />
+            <span>Target (75%)</span>
+          </span>
+        </div>
       </div>
+
+      {/* Recharts Radar Chart */}
+      <div className="w-full h-56 sm:h-64 flex items-center justify-center">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+            <PolarGrid stroke="rgba(148, 163, 184, 0.25)" />
+            <PolarAngleAxis
+              dataKey="subject"
+              tick={{ fill: "#64748B", fontSize: 11, fontWeight: 800 }}
+            />
+            <PolarRadiusAxis
+              angle={30}
+              domain={[0, 100]}
+              tick={false}
+              axisLine={false}
+            />
+            {/* Target Cutoff Line */}
+            <Radar
+              name="Target Benchmark"
+              dataKey="target"
+              stroke="#10B981"
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+              fill="#10B981"
+              fillOpacity={0.06}
+            />
+            {/* User Actual Mastery Radar */}
+            <Radar
+              name="Your Score %"
+              dataKey="score"
+              stroke="#6366F1"
+              strokeWidth={2.5}
+              fill="#6366F1"
+              fillOpacity={0.35}
+            />
+            <Tooltip content={<CustomRadarTooltip />} />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Weak Areas at a Glance Callout Strip */}
+      {metrics && metrics.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+          {/* Weakest Area Alert */}
+          {weakestArea && (
+            <div className="p-2.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/60 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-[10px] font-black uppercase text-rose-600 dark:text-rose-400 block tracking-wider">
+                    Weak Area to Focus
+                  </span>
+                  <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate block">
+                    {weakestArea.name}
+                  </span>
+                </div>
+              </div>
+              <span className="font-black text-rose-600 dark:text-rose-400 font-mono text-xs tabular-nums shrink-0">
+                {Math.round(weakestArea.percentage)}%
+              </span>
+            </div>
+          )}
+
+          {/* Strongest Area */}
+          {strongestArea && (
+            <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 block tracking-wider">
+                    Top Strength
+                  </span>
+                  <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate block">
+                    {strongestArea.name}
+                  </span>
+                </div>
+              </div>
+              <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-xs tabular-nums shrink-0">
+                {Math.round(strongestArea.percentage)}%
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

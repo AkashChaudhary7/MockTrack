@@ -29,6 +29,7 @@ interface TopAppBarProps {
   onOpenProfileSwitcher: () => void;
   onOpenSetDateModal: () => void;
   onNavigateTab: (tab: NavTab) => void;
+  onOpenWalkthrough?: () => void;
 }
 
 export const TopAppBar: React.FC<TopAppBarProps> = ({
@@ -40,6 +41,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
   onOpenProfileSwitcher,
   onOpenSetDateModal,
   onNavigateTab,
+  onOpenWalkthrough,
 }) => {
   const { t, language, setLanguage } = useTranslation();
   const [showDrawer, setShowDrawer] = useState(false);
@@ -92,7 +94,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
             </div>
           </button>
 
-          {/* RIGHT: Theme Toggle & Exam Day Countdown Pill */}
+          {/* RIGHT: Countdown Pill & Theme Toggle */}
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
@@ -103,7 +105,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
             >
               <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               {daysLeft !== null ? (
-                <span>{daysLeft} Days</span>
+                <span>{daysLeft > 0 ? `${daysLeft}d Left` : daysLeft === 0 ? "Today" : "Set Date"}</span>
               ) : (
                 <span>Date</span>
               )}
@@ -168,7 +170,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                 className="p-3 bg-indigo-50 dark:bg-indigo-950/60 rounded-2xl border border-indigo-200 dark:border-indigo-800 flex items-center justify-between cursor-pointer hover:scale-[1.01] transition-all"
               >
                 <div>
-                  <div className="text-xs font-black text-indigo-900 dark:text-indigo-200">
+                  <div className="text-xs font-black text-indigo-900 dark:text-indigo-200 italic font-display">
                     {candidate.name}
                   </div>
                   <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
@@ -189,6 +191,19 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                   <Sparkles className="w-4 h-4 text-indigo-500" />
                   <span>Dashboard</span>
                 </button>
+
+                {onOpenWalkthrough && (
+                  <button
+                    onClick={() => {
+                      setShowDrawer(false);
+                      onOpenWalkthrough();
+                    }}
+                    className="w-full py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-left flex items-center gap-2.5 text-amber-900 dark:text-amber-200 cursor-pointer font-bold border border-amber-200/60 dark:border-amber-800"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>App Walkthrough Tour</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => handleNav("history")}

@@ -20,6 +20,7 @@ import {
   Info,
   AlertOctagon,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { useTranslation, LanguageCode } from "../i18n/LanguageContext";
 import { HapticService } from "../services/HapticService";
@@ -36,6 +37,7 @@ interface SettingsScreenProps {
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClearAllData: () => void;
   onNavigateTab: (tab: NavTab) => void;
+  onOpenWalkthrough?: () => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
@@ -47,6 +49,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onImportData,
   onClearAllData,
   onNavigateTab,
+  onOpenWalkthrough,
 }) => {
   const { t, language, setLanguage } = useTranslation();
   const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
@@ -361,6 +364,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <span className="text-xs font-black font-display uppercase tracking-wider text-slate-400 block border-b border-slate-100 dark:border-slate-800 pb-2">
           About &amp; Resources
         </span>
+
+        {onOpenWalkthrough && (
+          <button
+            type="button"
+            onClick={() => {
+              HapticService.selection();
+              onOpenWalkthrough();
+            }}
+            className="w-full py-2.5 px-3 flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="w-4 h-4 text-amber-500 fill-amber-400" />
+              <span>App Walkthrough &amp; Start Tutorial</span>
+            </div>
+            <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">
+              Replay Tour →
+            </span>
+          </button>
+        )}
 
         <button
           type="button"

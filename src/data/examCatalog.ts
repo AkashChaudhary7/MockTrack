@@ -11,6 +11,7 @@ export const EXAM_CATALOG: ExamProfile[] = [
     totalMarks: 200,
     targetScore: 140,
     defaultDurationMinutes: 120,
+    examDate: "2026-12-05",
     negativeMarkingRatio: 0.25,
     isSelected: false,
     hasParts: true,
@@ -144,6 +145,7 @@ export const EXAM_CATALOG: ExamProfile[] = [
     totalMarks: 200,
     targetScore: 160,
     defaultDurationMinutes: 60,
+    examDate: "2026-11-20",
     negativeMarkingRatio: 0.5,
     isSelected: true,
     subjects: [

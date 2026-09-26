@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
-import { Mail, Sparkles, Send, Copy, Check, ExternalLink, Heart } from "lucide-react";
-import { Doodle3DFeedbackMail, Doodle3DSparkle } from "./Doodles3D";
+import { Mail, Heart, Check, Copy, Sparkles, Send } from "lucide-react";
 import { HapticService } from "../services/HapticService";
 import { ExamProfile } from "../types";
 
@@ -11,6 +10,49 @@ interface RecentMocksFeedbackSectionProps {
   onOpenInAppModal?: () => void;
 }
 
+/**
+ * Handcrafted Sweet SVG Vector Graphic: Compact Envelope with Heart & Sparkles
+ */
+const SvgSweetFeedbackGraphic: React.FC<{ size?: number }> = ({ size = 42 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 60 60"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className="select-none filter drop-shadow-2xs"
+  >
+    <defs>
+      <linearGradient id="fb-env-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#818CF8" />
+        <stop offset="100%" stopColor="#4F46E5" />
+      </linearGradient>
+      <linearGradient id="fb-heart-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#FB7185" />
+        <stop offset="100%" stopColor="#E11D48" />
+      </linearGradient>
+    </defs>
+    {/* Shadow */}
+    <ellipse cx="30" cy="54" rx="20" ry="3.5" fill="#1E1B4B" opacity="0.1" />
+    {/* Envelope Body */}
+    <rect x="10" y="20" width="40" height="28" rx="6" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="1.5" />
+    <path d="M 10 24 L 30 38 L 50 24" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" />
+    {/* Inner Letter Sheet */}
+    <rect x="16" y="14" width="28" height="18" rx="3" fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="1" />
+    <line x1="20" y1="19" x2="34" y2="19" stroke="#CBD5E1" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="20" y1="24" x2="40" y2="24" stroke="#CBD5E1" strokeWidth="1.5" strokeLinecap="round" />
+    {/* Sweet Center Heart */}
+    <path
+      d="M 30 25 C 30 20 35 18 38 21 C 41 18 46 20 46 25 C 46 32 38 37 38 37 C 38 37 30 32 30 25 Z"
+      fill="url(#fb-heart-grad)"
+      transform="scale(0.7) translate(14, 5)"
+    />
+    {/* Vector Sparkle */}
+    <polygon points="12,12 13.5,8 15,12 19,13.5 15,15 13.5,19 12,15 8,13.5" fill="#FBBF24" />
+    <circle cx="48" cy="14" r="2" fill="#38BDF8" />
+  </svg>
+);
+
 export const RecentMocksFeedbackSection: React.FC<RecentMocksFeedbackSectionProps> = ({
   activeExam,
   candidateName = "Aspirant",
@@ -18,27 +60,6 @@ export const RecentMocksFeedbackSection: React.FC<RecentMocksFeedbackSectionProp
 }) => {
   const [copied, setCopied] = useState(false);
   const recipientEmail = "mobographie@gmail.com";
-
-  // Construct direct Gmail web compose link & native mailto
-  const emailSubject = encodeURIComponent(
-    `MockTrack Feedback & App Suggestion — ${activeExam?.shortCode || activeExam?.name || "Exam Prep"}`
-  );
-  const emailBody = encodeURIComponent(
-    `Hi,\n\nI am using MockTrack for my ${activeExam?.name || "exam"} preparation.\n\nHere is something I'd love to suggest or change in the app:\n\n1. Feedback / Feature Idea:\n\n2. Any exam pattern or scoring issue:\n\nThanks!\n— ${candidateName}`
-  );
-
-  // Gmail direct web URL (works seamlessly in browser & desktop)
-  const gmailWebComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${recipientEmail}&su=${emailSubject}&body=${emailBody}`;
-  const mailtoUrl = `mailto:${recipientEmail}?subject=${emailSubject}&body=${emailBody}`;
-
-  const handleOpenGmail = () => {
-    HapticService.selection();
-    // Try opening direct Gmail web compose in a new tab; fallback to mailto
-    const opened = window.open(gmailWebComposeUrl, "_blank", "noopener,noreferrer");
-    if (!opened || opened.closed || typeof opened.closed === "undefined") {
-      window.location.href = mailtoUrl;
-    }
-  };
 
   const handleCopyEmail = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -48,99 +69,84 @@ export const RecentMocksFeedbackSection: React.FC<RecentMocksFeedbackSectionProp
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleOpenEmail = () => {
+    HapticService.selection();
+    const emailSubject = encodeURIComponent(
+      `MockTrack Feedback — ${activeExam?.shortCode || activeExam?.name || "Exam Prep"}`
+    );
+    const emailBody = encodeURIComponent(
+      `Hi,\n\nI am using MockTrack for my ${activeExam?.name || "exam"} prep.\n\nFeedback / Suggestion:\n\nThanks!\n— ${candidateName}`
+    );
+    window.location.href = `mailto:${recipientEmail}?subject=${emailSubject}&body=${emailBody}`;
+  };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50/70 via-white to-sky-50/50 dark:from-slate-900 dark:via-indigo-950/30 dark:to-slate-900 border border-indigo-200/80 dark:border-indigo-800/70 p-5 sm:p-6 shadow-sm hover:shadow-md transition-all"
+      transition={{ duration: 0.25 }}
+      className="card-luminous rounded-2xl p-3.5 sm:p-4 border border-indigo-200/80 dark:border-indigo-800/60 bg-gradient-to-r from-indigo-50/60 via-white to-sky-50/40 dark:from-indigo-950/30 dark:via-slate-900 dark:to-slate-800/70 flex flex-col sm:flex-row items-center justify-between gap-3 relative overflow-hidden transition-all shadow-2xs"
     >
-      {/* Soft Ambient Clay Light Blur */}
-      <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 blur-2xl pointer-events-none" />
-      <div className="absolute -left-8 -top-8 w-32 h-32 rounded-full bg-rose-400/10 dark:bg-rose-500/10 blur-xl pointer-events-none" />
-
-      <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        {/* Left Side: 3D Doodle + Title + Human Description */}
-        <div className="flex items-start gap-3.5 sm:gap-4 flex-1 min-w-0">
-          <div className="shrink-0 transition-transform duration-300 hover:scale-110 hover:-rotate-3 pt-0.5">
-            <Doodle3DFeedbackMail size={64} className="sm:w-18 sm:h-18" />
-          </div>
-
-          <div className="space-y-1 min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[10px] font-black uppercase tracking-wider font-display">
-                <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
-                Community & Feedback
-              </span>
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                Direct to Developer
-              </span>
-            </div>
-
-            <h3 className="text-base sm:text-lg font-black font-display text-slate-900 dark:text-slate-100 tracking-tight leading-snug">
-              Want to change something in the app?
-            </h3>
-
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-md">
-              Every mock insight, chapter breakdown, or exam format you need — we listen personally.
-              Drop your thoughts directly to our inbox.
-            </p>
-
-            {/* Email pill with click-to-copy */}
-            <div className="pt-1 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopyEmail}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors cursor-pointer shadow-2xs"
-                title="Click to copy email address"
-              >
-                <Mail className="w-3 h-3 text-indigo-500" />
-                <span>{recipientEmail}</span>
-                {copied ? (
-                  <Check className="w-3 h-3 text-emerald-500" />
-                ) : (
-                  <Copy className="w-3 h-3 text-slate-400" />
-                )}
-              </button>
-              {copied && (
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 animate-in fade-in">
-                  Copied!
-                </span>
-              )}
-            </div>
-          </div>
+      {/* Left: SVG Vector Graphic + Short Sweet Text */}
+      <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+        <div className="shrink-0 p-1.5 rounded-xl bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-center shadow-2xs">
+          <SvgSweetFeedbackGraphic size={38} />
         </div>
 
-        {/* Right Side: Direct Action Button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0">
-          {/* Main Primary Button requested by User */}
+        <div className="min-w-0 space-y-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900 font-display">
+              <Heart className="w-2.5 h-2.5 fill-rose-500 text-rose-500" />
+              <span>Feedback</span>
+            </span>
+            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 font-display">
+              Have an idea or feedback?
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate max-w-sm">
+            We improve MockTrack every week based on your suggestions.
+          </p>
+        </div>
+      </div>
+
+      {/* Right: Short & Sweet Single-Tap Action Buttons */}
+      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+        {onOpenInAppModal ? (
           <button
             type="button"
-            onClick={handleOpenGmail}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-black font-display shadow-md shadow-indigo-600/25 transition-all cursor-pointer active:scale-95 group"
+            onClick={() => {
+              HapticService.selection();
+              onOpenInAppModal();
+            }}
+            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer transition-all font-display"
           >
-            <Mail className="w-4 h-4 shrink-0 transition-transform group-hover:-translate-y-0.5" />
-            <span className="text-center">
-              Give feedback / Want to change something in app
-            </span>
-            <ExternalLink className="w-3.5 h-3.5 text-indigo-200 shrink-0 opacity-80" />
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Share Feedback</span>
           </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleOpenEmail}
+            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer transition-all font-display"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Email Feedback</span>
+          </button>
+        )}
 
-          {/* Optional in-app quick modal if preferred */}
-          {onOpenInAppModal && (
-            <button
-              type="button"
-              onClick={() => {
-                HapticService.lightTap();
-                onOpenInAppModal();
-              }}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200/80 dark:border-slate-700 shadow-2xs transition-all cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>In-App Form</span>
-            </button>
+        <button
+          type="button"
+          onClick={handleCopyEmail}
+          className="p-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+          title={`Copy email (${recipientEmail})`}
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5 text-emerald-500" />
+          ) : (
+            <Mail className="w-3.5 h-3.5 text-slate-400 hover:text-indigo-500" />
           )}
-        </div>
+        </button>
       </div>
     </motion.div>
   );

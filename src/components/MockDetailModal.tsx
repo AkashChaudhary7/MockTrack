@@ -113,7 +113,7 @@ export const MockDetailModal: React.FC<MockDetailModalProps> = ({
                 {/* Candidate Name Badge */}
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[11px] font-extrabold tracking-wide">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Aspirant: {candidate.name}</span>
+                  <span>Aspirant: <span className="italic font-display">{candidate.name}</span></span>
                 </div>
 
                 <h3 className="text-lg sm:text-xl font-black font-display tracking-tight text-white truncate pt-1">

@@ -17,7 +17,7 @@ export const SetDateModal: React.FC<SetDateModalProps> = ({
   activeExam,
   onSaveDate,
 }) => {
-  const [examDate, setExamDate] = useState<string>(activeExam.examDate || "2026-09-17");
+  const [examDate, setExamDate] = useState<string>(activeExam.examDate || "2026-11-20");
   const [targetScore, setTargetScore] = useState<number>(
     activeExam.targetScore || Math.round(activeExam.totalMarks * 0.8)
   );

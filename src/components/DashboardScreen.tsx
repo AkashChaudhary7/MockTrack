@@ -29,10 +29,10 @@ import { HapticService } from "../services/HapticService";
 import { CalendarViewModal } from "./CalendarViewModal";
 import { FeedbackModal } from "./FeedbackModal";
 import { FirstMockGuideBanner } from "./FirstMockGuideBanner";
+import { ExamCountdownWidget } from "./ExamCountdownWidget";
 import { TargetScoreBanner } from "./TargetScoreBanner";
 import { RecentMocksFeedbackSection } from "./RecentMocksFeedbackSection";
 import { MockDetailModal } from "./MockDetailModal";
-import { SmartInsightSection } from "./SmartInsightSection";
 import {
   Doodle3DTarget,
   Doodle3DFlame,
@@ -41,6 +41,17 @@ import {
   Doodle3DSparkle,
   Doodle3DShield,
 } from "./Doodles3D";
+import { MascotSpeechCard } from "./MascotCharacter";
+import { DashboardBadges } from "./DashboardBadges";
+import { SubjectRadarChart } from "./SubjectRadarChart";
+import {
+  HqSvgMocksDossier,
+  HqSvgStreakFlame,
+  HqSvgPeakTrophy,
+  HqSvgCompassAverage,
+  HqSvgShieldCutoff,
+  HqSvgAccuracyDiamond,
+} from "./HqSvgGraphics";
 
 interface DashboardScreenProps {
   candidate: CandidateProfile;
@@ -57,6 +68,7 @@ interface DashboardScreenProps {
   onOpenScoreCard?: (milestoneTitle?: string) => void;
   activeMilestone?: MilestoneEvent | null;
   onDismissMilestone?: () => void;
+  onOpenWalkthrough?: () => void;
 }
 
 const containerVariants = {
@@ -94,11 +106,24 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onOpenScoreCard,
   activeMilestone,
   onDismissMilestone,
+  onOpenWalkthrough,
 }) => {
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState<boolean>(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState<boolean>(false);
   const [selectedMockForDetail, setSelectedMockForDetail] = useState<MockAttempt | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [hasSeenAceTips, setHasSeenAceTips] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("mocktrack_ace_tips_seen") === "true";
+    }
+    return false;
+  });
+
+  const handleDismissAceTips = () => {
+    HapticService.lightTap();
+    setHasSeenAceTips(true);
+    localStorage.setItem("mocktrack_ace_tips_seen", "true");
+  };
   const { t, effectiveLang } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
   const analytics = calculateAnalytics(attempts, activeExam);
@@ -149,7 +174,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     ? Math.min(99, Math.max(20, Math.round(((analytics.baselineScore || currentAvgScore) / cutoffTarget) * 88)))
     : 0;
 
-  // Interactive 3D Quick Stats Configuration with Friendly Human-Touch Microcopy
+  // Interactive HQ SVG Quick Stats Configuration with Premium Typography & Microcopy
   const QUICK_STATS_CONFIG = [
     {
       id: "totalMocks",
@@ -157,8 +182,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       sub: "Logged",
       value: `${examAttempts.length}`,
       valClass: "text-indigo-700 dark:text-indigo-300",
-      bgClass: "bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-100/70 dark:border-indigo-800/50",
-      icon: <Doodle3DTarget size={14} className="shrink-0" />,
+      subClass: "bg-indigo-100/70 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/50",
+      bgClass: "bg-gradient-to-b from-indigo-50/70 to-white dark:from-indigo-950/40 dark:to-slate-900 border-indigo-100/90 dark:border-indigo-900/60",
+      icon: <HqSvgMocksDossier size={22} className="shrink-0" />,
+      tooltipIcon: <HqSvgMocksDossier size={30} className="shrink-0" />,
       tooltipTitle: "Total Mocks Logged",
       tooltipBadge: "Volume & Stamina",
       tooltipSheen: "from-indigo-500 via-blue-500 to-indigo-600",
@@ -175,9 +202,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       label: "Streak",
       sub: "Active",
       value: `${streakStats.currentStreak}d`,
-      valClass: "text-amber-500 dark:text-amber-400",
-      bgClass: "bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/60 dark:border-amber-800/50",
-      icon: <Doodle3DFlame size={14} className="shrink-0" />,
+      valClass: "text-amber-600 dark:text-amber-400",
+      subClass: "bg-amber-100/70 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50",
+      bgClass: "bg-gradient-to-b from-amber-50/70 to-white dark:from-amber-950/40 dark:to-slate-900 border-amber-200/80 dark:border-amber-900/60",
+      icon: <HqSvgStreakFlame size={22} className="shrink-0" />,
+      tooltipIcon: <HqSvgStreakFlame size={30} className="shrink-0" />,
       tooltipTitle: "Daily Practice Streak",
       tooltipBadge: "Momentum Engine",
       tooltipSheen: "from-amber-500 via-orange-500 to-red-500",
@@ -195,8 +224,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       sub: "Peak Best",
       value: highestFullMockScore > 0 ? `${highestFullMockScore}` : "--",
       valClass: "text-purple-600 dark:text-purple-400",
-      bgClass: "bg-purple-50/60 dark:bg-purple-950/30 border-purple-200/60 dark:border-purple-800/50",
-      icon: <Doodle3DTrophy size={14} className="shrink-0" />,
+      subClass: "bg-purple-100/70 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/50",
+      bgClass: "bg-gradient-to-b from-purple-50/70 to-white dark:from-purple-950/40 dark:to-slate-900 border-purple-200/80 dark:border-purple-900/60",
+      icon: <HqSvgPeakTrophy size={22} className="shrink-0" />,
+      tooltipIcon: <HqSvgPeakTrophy size={30} className="shrink-0" />,
       tooltipTitle: "Peak Best Score",
       tooltipBadge: "Personal Best (PB)",
       tooltipSheen: "from-purple-500 via-indigo-500 to-pink-500",
@@ -214,8 +245,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       sub: "Overall",
       value: avgFullMockScore > 0 ? `${avgFullMockScore}` : "--",
       valClass: "text-blue-600 dark:text-blue-400",
-      bgClass: "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-800/50",
-      icon: <Doodle3DTarget size={14} className="shrink-0" />,
+      subClass: "bg-blue-100/70 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/50",
+      bgClass: "bg-gradient-to-b from-blue-50/70 to-white dark:from-blue-950/40 dark:to-slate-900 border-blue-200/80 dark:border-blue-900/60",
+      icon: <HqSvgCompassAverage size={22} className="shrink-0" />,
+      tooltipIcon: <HqSvgCompassAverage size={30} className="shrink-0" />,
       tooltipTitle: "Operational Average",
       tooltipBadge: "Dependable Base",
       tooltipSheen: "from-blue-500 via-cyan-500 to-indigo-500",
@@ -233,8 +266,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       sub: cutoffProbability >= 85 ? "High Safety" : cutoffProbability >= 70 ? "Promising" : "Developing",
       value: examAttempts.length > 0 ? `${cutoffProbability}%` : "--",
       valClass: "text-emerald-600 dark:text-emerald-400",
-      bgClass: "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-800/50",
-      icon: <Doodle3DShield size={14} className="shrink-0" />,
+      subClass: "bg-emerald-100/70 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50",
+      bgClass: "bg-gradient-to-b from-emerald-50/70 to-white dark:from-emerald-950/40 dark:to-slate-900 border-emerald-200/80 dark:border-emerald-900/60",
+      icon: <HqSvgShieldCutoff size={22} className="shrink-0" />,
+      tooltipIcon: <HqSvgShieldCutoff size={30} className="shrink-0" />,
       tooltipTitle: "Cutoff Probability",
       tooltipBadge: "Readiness Safety Gauge",
       tooltipSheen: "from-emerald-500 via-teal-500 to-emerald-600",
@@ -251,9 +286,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       label: "Accuracy",
       sub: "Precision",
       value: `${overallAccuracy}%`,
-      valClass: "text-emerald-600 dark:text-emerald-400",
-      bgClass: "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-800/50",
-      icon: <Doodle3DSparkle size={12} className="shrink-0" />,
+      valClass: "text-teal-600 dark:text-teal-400",
+      subClass: "bg-teal-100/70 dark:bg-teal-900/60 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-800/50",
+      bgClass: "bg-gradient-to-b from-teal-50/70 to-white dark:from-teal-950/40 dark:to-slate-900 border-teal-200/80 dark:border-teal-900/60",
+      icon: <HqSvgAccuracyDiamond size={22} className="shrink-0" />,
+      tooltipIcon: <HqSvgAccuracyDiamond size={30} className="shrink-0" />,
       tooltipTitle: "Strike Accuracy",
       tooltipBadge: "Penalty Shield",
       tooltipSheen: "from-teal-500 via-emerald-500 to-green-600",
@@ -282,36 +319,62 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       animate="show"
       className="space-y-4 pb-28 max-w-2xl mx-auto"
     >
-      {/* 1. HEADER & GREETING - Single-line guaranteed User Name */}
+      {/* 1. HEADER & GREETING - Single-line guaranteed User Name with Italic Aspirant Name */}
       <motion.div
         variants={shouldReduceMotion ? undefined : itemVariants}
         className="flex items-center justify-between gap-2.5 pt-1"
       >
         <div className="min-w-0 flex-1">
-          <span className="text-[11px] font-extrabold text-indigo-600/80 dark:text-indigo-400/90 uppercase tracking-wider block truncate">
+          <span className="text-[11px] font-extrabold text-indigo-600/80 dark:text-indigo-400/90 uppercase tracking-wider block truncate font-display">
             {dateStr}
           </span>
-          {/* User Name in Single Line with truncate and whitespace-nowrap */}
+          {/* Aspirant Name in Italic with Premium Gradient Display Style */}
           <h1 className="text-xl sm:text-2xl font-black font-display text-slate-900 dark:text-white tracking-tight truncate whitespace-nowrap leading-tight">
-            Hi, {candidate.name} 👋
+            Hi, <span className="italic font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 dark:from-indigo-400 dark:via-purple-300 dark:to-indigo-300 tracking-normal">{candidate.name}</span> 👋
           </h1>
         </div>
 
-        {/* Active Exam Selector Button */}
-        <button
-          onClick={() => {
-            HapticService.lightTap();
-            onOpenProfileSwitcher();
-          }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50/90 hover:bg-indigo-100 dark:bg-indigo-950/80 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-black border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer shadow-2xs shrink-0 whitespace-nowrap"
-        >
-          <Target className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-          <span className="truncate max-w-[130px] sm:max-w-none font-bold">
-            {activeExam.shortCode || activeExam.name}
-          </span>
-          <ChevronDown className="w-3 h-3 text-indigo-500 shrink-0" />
-        </button>
+        {/* Exam Picker without Log Mock button */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              HapticService.lightTap();
+              onOpenProfileSwitcher();
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-indigo-50/80 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-black border border-slate-200/80 dark:border-slate-800 transition-all cursor-pointer shadow-xs shrink-0 whitespace-nowrap hover:border-indigo-300 dark:hover:border-indigo-700 active:scale-95"
+            title="Switch Active Exam"
+          >
+            <Target className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span className="truncate max-w-[120px] sm:max-w-none font-bold">
+              {activeExam.shortCode || activeExam.name}
+            </span>
+            <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+          </button>
+        </div>
       </motion.div>
+
+      {/* 1.5. MASCOT CARTOON MENTOR EXPLAINING CARD (Dismissed once seen) */}
+      {!hasSeenAceTips && (
+        <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
+          <MascotSpeechCard
+            pose={examAttempts.length === 0 ? "explaining" : "target"}
+            title={examAttempts.length === 0 ? "Meet Ace, Your Exam Mentor!" : `Aspirant Focus: ${activeExam.shortCode || activeExam.name}`}
+            message={
+              examAttempts.length === 0
+                ? `Ready to master your ${activeExam.shortCode || activeExam.name} prep? Take the 1-minute visual app tour to see how to log mocks, isolate weaknesses, and beat cutoffs!`
+                : `Your goal is ${targetScore}/${activeExam.totalMarks}. Maintain accuracy above 85% to protect your hard-earned points from negative penalties!`
+            }
+            badge="Ace Tips"
+            actionText={onOpenWalkthrough ? "Take 1-Min Visual Tour" : undefined}
+            onAction={() => {
+              handleDismissAceTips();
+              onOpenWalkthrough?.();
+            }}
+            onDismiss={handleDismissAceTips}
+          />
+        </motion.div>
+      )}
 
       {/* 2. FIRST MOCK ONBOARDING INFO BANNER - Prominent when 0 attempts */}
       {examAttempts.length === 0 && (
@@ -334,6 +397,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           />
         </motion.div>
       )}
+
+      {/* 3.5. COMPACT EXAM COUNTDOWN WIDGET */}
+      <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
+        <ExamCountdownWidget
+          activeExam={activeExam}
+          onOpenSetDateModal={onOpenSetDateModal}
+        />
+      </motion.div>
 
       {/* 4. TARGET SCORE - Clean Animated Banner (just above Quick Stats, keep only target) */}
       <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
@@ -429,9 +500,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       <div className="p-3.5 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md rounded-2xl border-2 border-indigo-200/90 dark:border-indigo-800/80 shadow-2xl shadow-indigo-950/20 dark:shadow-black/70 text-left">
                         <div className={`h-1 w-full bg-gradient-to-r ${stat.tooltipSheen} rounded-full mb-2.5`} />
                         <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                          <div className="flex items-center gap-1.5">
-                            {stat.icon}
-                            <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+                          <div className="flex items-center gap-2">
+                            {stat.tooltipIcon || stat.icon}
+                            <span className="text-xs font-black text-slate-900 dark:text-slate-100 font-display">
                               {stat.tooltipTitle}
                             </span>
                           </div>
@@ -442,7 +513,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                         <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
                           {stat.explanation}
                         </p>
-                        <div className="mt-2.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400">
+                        <div className="mt-2.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] font-bold text-slate-400 font-mono">
                           <span>{stat.footerCurrent}</span>
                           <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{stat.footerStatus}</span>
                         </div>
@@ -474,23 +545,25 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     setActiveTooltip(isHovered ? null : stat.id);
                     HapticService.selection();
                   }}
-                  className={`w-full p-2.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col justify-between items-center ${stat.bgClass} ${
+                  className={`group w-full p-2.5 sm:p-3 rounded-2xl border text-center transition-all duration-200 cursor-pointer flex flex-col justify-between items-center relative overflow-hidden backdrop-blur-xs shadow-2xs hover:shadow-md ${stat.bgClass} ${
                     isHovered
                       ? "ring-2 ring-indigo-500 scale-[1.03] shadow-md shadow-indigo-500/15"
-                      : "hover:scale-[1.02]"
+                      : "hover:scale-[1.02] hover:-translate-y-0.5"
                   }`}
                   aria-label={`${stat.label}: ${stat.value}`}
                 >
-                  <div className="flex items-center justify-center gap-1 w-full">
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                  <div className="flex items-center justify-between gap-1 w-full">
+                    <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 block truncate font-display text-left">
                       {stat.label}
                     </span>
-                    {stat.icon}
+                    <div className="group-hover:scale-110 transition-transform duration-200">
+                      {stat.icon}
+                    </div>
                   </div>
-                  <span className={`text-base sm:text-lg font-black block tabular-nums font-display my-0.5 ${stat.valClass}`}>
+                  <span className={`text-base sm:text-lg font-black block tabular-nums font-stylish my-1 tracking-tight ${stat.valClass}`}>
                     {stat.value}
                   </span>
-                  <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                  <span className={`text-[8.5px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md truncate max-w-full font-mono ${stat.subClass}`}>
                     {stat.sub}
                   </span>
                 </button>
@@ -498,6 +571,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             );
           })}
         </div>
+      </motion.div>
+
+      {/* 3.5. VISUAL BADGES COMPONENT - Showcase unlocked achievements */}
+      <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
+        <DashboardBadges attempts={attempts} activeExam={activeExam} />
       </motion.div>
 
       {/* 4. PERFORMANCE TREND SCORE PROGRESSION LINE CHART (LAST 10 MOCKS) */}
@@ -518,17 +596,26 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         />
       </motion.div>
 
-      {/* 5. SMART INSIGHT CARDS (Mistake-Driven Practice Recommendations) */}
-      <motion.div variants={shouldReduceMotion ? undefined : itemVariants} className="space-y-2">
-        <SmartInsightSection
-          activeExam={activeExam}
-          attempts={attempts}
-          onNavigateTab={onNavigateTab}
-          onOpenLogModal={onOpenLogModal}
-        />
-      </motion.div>
+      {/* 4.5. RECHARTS RADAR CHART - Subject Mastery & Weak Area Detection */}
+      {examAttempts.length > 0 && (
+        <motion.div variants={shouldReduceMotion ? undefined : itemVariants}>
+          <SubjectRadarChart
+            metrics={analytics.subjectBreakdown.map((sb) => ({
+              name: sb.name,
+              scoreAvg: sb.scoreAvg,
+              maxAvg: sb.maxAvg,
+              percentage: sb.percentage,
+              accuracy: Math.round(sb.percentage * 0.95),
+              status: sb.status,
+              colorClass: sb.colorClass,
+            }))}
+            title="Subject Performance Radar"
+            subtitle="Identify strengths and pinpoint weak areas across subjects at a glance"
+          />
+        </motion.div>
+      )}
 
-      {/* 6. RECENT MOCKS LIST */}
+      {/* 5. RECENT MOCKS LIST */}
       <motion.div variants={shouldReduceMotion ? undefined : itemVariants} className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-[11px] font-black tracking-wider text-slate-400 dark:text-slate-500 uppercase">
